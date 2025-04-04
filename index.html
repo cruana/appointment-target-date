@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Appointment Due Date App</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        input, select { padding: 10px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h2>Appointment Due Date Calculator</h2>
+    
+    <label for="appointmentDate">Select Appointment Date:</label>
+    <input type="date" id="appointmentDate">
+    
+    <label for="appointmentType">Select Appointment Type:</label>
+    <select id="appointmentType">
+        <option value="followup">Follow-up (10 days)</option>
+        <option value="urgent">Urgent (24 hours)</option>
+        <option value="new">New Appointment (14 days)</option>
+    </select>
+    
+    <button onclick="calculateDueDate()">Calculate Due Date</button>
+    
+    <h3>Due Date: <span id="dueDate"></span></h3>
+
+    <script>
+        function calculateDueDate() {
+            let appointmentDate = document.getElementById("appointmentDate").value;
+            let appointmentType = document.getElementById("appointmentType").value;
+            
+            if (!appointmentDate) {
+                alert("Please select an appointment date.");
+                return;
+            }
+
+            let date = new Date(appointmentDate);
+            let daysToAdd = {
+                "followup": 10,
+                "urgent": 1,
+                "new": 14
+            }[appointmentType];
+
+            date.setDate(date.getDate() + daysToAdd);
+            document.getElementById("dueDate").textContent = date.toDateString();
+        }
+    </script>
+</body>
+</html>
