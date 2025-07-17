@@ -17,9 +17,11 @@
     
     <label for="appointmentType">Select Appointment Type:</label>
     <select id="appointmentType">
-        <option value="followup">Follow-up (10 days)</option>
-        <option value="urgent">Urgent (24 hours)</option>
-        <option value="new">New Appointment (14 days)</option>
+        <option value="followup">Follow-up (7 calendar / 5 business days)</option>
+        <option value="urgent">Urgent (1 calendar day)</option>
+        <option value="new">New Appointment (14 calendar / 10 business days)</option>
+        <option value="routine">Routine (15 business days)</option>
+        <option value="posh">POSH (3 calendar days)</option>
     </select>
     
     <button onclick="calculateDueDate()">Calculate Due Date</button>
@@ -27,9 +29,21 @@
     <h3>Due Date: <span id="dueDate"></span></h3>
 
     <script>
+        function addBusinessDays(date, days) {
+            let count = 0;
+            while (count < days) {
+                date.setDate(date.getDate() + 1);
+                // Skip Saturday (6) and Sunday (0)
+                if (date.getDay() !== 0 && date.getDay() !== 6) {
+                    count++;
+                }
+            }
+            return date;
+        }
+
         function calculateDueDate() {
-            let appointmentDate = document.getElementById("appointmentDate").value;
-            let appointmentType = document.getElementById("appointmentType").value;
+            const appointmentDate = document.getElementById("appointmentDate").value;
+            const appointmentType = document.getElementById("appointmentType").value;
             
             if (!appointmentDate) {
                 alert("Please select an appointment date.");
@@ -37,13 +51,36 @@
             }
 
             let date = new Date(appointmentDate);
-            let daysToAdd = {
-                "followup": 10,
-                "urgent": 1,
-                "new": 14
-            }[appointmentType];
+            let calendarDays = 0;
+            let businessDays = 0;
 
-            date.setDate(date.getDate() + daysToAdd);
+            switch (appointmentType) {
+                case "followup":
+                    calendarDays = 7;
+                    businessDays = 5;
+                    break;
+                case "urgent":
+                    calendarDays = 1;
+                    break;
+                case "new":
+                    calendarDays = 14;
+                    businessDays = 10;
+                    break;
+                case "routine":
+                    businessDays = 15;
+                    break;
+                case "posh":
+                    calendarDays = 3;
+                    break;
+            }
+
+            // Prioritize business days if defined
+            if (businessDays > 0) {
+                date = addBusinessDays(date, businessDays);
+            } else {
+                date.setDate(date.getDate() + calendarDays);
+            }
+
             document.getElementById("dueDate").textContent = date.toDateString();
         }
     </script>
