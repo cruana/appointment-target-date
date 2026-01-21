@@ -17,9 +17,9 @@
     
     <label for="appointmentType">Select Appointment Type:</label>
     <select id="appointmentType">
-        <option value="followup">Follow-up (7 calendar / 5 business days)</option>
+        <option value="therapy">Intake / FIC Therapy (14 calendar / 10 business days)</option>
         <option value="urgent">Urgent (1 calendar day)</option>
-        <option value="therapy">Intake / FIC therapy (14 calendar / 10 business days)</option>
+        <option value="follwo-up">Follow-Up (7 calendar / 5 business days)</option>
         <option value="routine">MD Routine (15 business days)</option>
         <option value="posh">POSH (3 calendar days)</option>
     </select>
@@ -55,16 +55,16 @@
             let businessDays = 0;
 
             switch (appointmentType) {
-                case "followup":
-                    calendarDays = 7;
-                    businessDays = 5;
+                case "therapy":
+                    calendarDays = 14;
+                    businessDays = 10;
                     break;
                 case "urgent":
                     calendarDays = 1;
                     break;
-                case "therapy":
-                    calendarDays = 14;
-                    businessDays = 10;
+                case "followup":
+                    calendarDays = 7;
+                    businessDays = 5;
                     break;
                 case "routine":
                     businessDays = 15;
