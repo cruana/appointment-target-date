@@ -20,7 +20,7 @@
 <div class="container">
     <h2>Target & Due Date Calculator</h2>
     
-    <label for="appointmentDate">Request / Trigger Date:</label>
+    <label for="appointmentDate">Outreach / Contact Date:</label>
     <input type="date" id="appointmentDate">
     
     <label for="appointmentType">Appointment Type:</label>
@@ -35,12 +35,12 @@
     <hr>
 
     <h3>Documentation</h3>
-    <label for="firstOfferedDate">First Offered Appointment Date:</label>
+    <label for="firstOfferedDate">First Offered Date:</label>
     <input type="date" id="firstOfferedDate">
 
-    <label for="outcome">Outcome / Scenario:</label>
+    <label for="outcome">Outcome:</label>
     <select id="outcome">
-        <option value="met">Target Met</option>
+        <option value="met">Target Date Met</option>
         <option value="declined">Member Declined First Offer</option>
         <option value="unavailable">Provider Unavailable</option>
         <option value="no_show">No Show / Cancellation</option>
@@ -56,8 +56,7 @@
 </div>
 
 <script>
-    // --- CONFIGURATION ---
-    // Best Way: Store rules here so you don't hunt through "if" statements later.
+    
     const APPOINTMENT_RULES = {
         "therapy":  { cal: 14, bus: 10 },
         "urgent":   { cal: 1,  bus: 0 },
@@ -66,9 +65,7 @@
         "posh":     { cal: 3,  bus: 0 }
     };
 
-    // --- HELPER FUNCTIONS ---
-
-    // Fixes the "off by one day" timezone bug by forcing local time
+ 
     function getLocalDate(dateString) {
         if (!dateString) return null;
         const parts = dateString.split('-');
@@ -77,12 +74,12 @@
 
     function addBusinessDays(date, days) {
         let count = 0;
-        let resultDate = new Date(date); // Clone date so we don't change original
+        let resultDate = new Date(date); 
         
         while (count < days) {
             resultDate.setDate(resultDate.getDate() + 1);
             const dayOfWeek = resultDate.getDay();
-            // 0 is Sunday, 6 is Saturday
+            
             if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                 count++;
             }
@@ -96,10 +93,10 @@
         return resultDate;
     }
 
-    // --- MAIN LOGIC ---
+ 
 
     function calculateDetails() {
-        // 1. Get Inputs
+        
         const startStr = document.getElementById("appointmentDate").value;
         const offeredStr = document.getElementById("firstOfferedDate").value;
         const type = document.getElementById("appointmentType").value;
@@ -113,31 +110,26 @@
         const startDate = getLocalDate(startStr);
         const rule = APPOINTMENT_RULES[type];
 
-        // 2. Calculate Due Date based on Rules
         let dueDate;
         
-        // Logic: If business days are defined and > 0, use them. Otherwise use calendar.
-        // You can change this logic preference here if your rules change.
+    
         if (rule.bus > 0) {
             dueDate = addBusinessDays(startDate, rule.bus);
         } else {
             dueDate = addCalendarDays(startDate, rule.cal);
         }
 
-        // 3. Determine Compliance (Documentation Logic)
         let statusMessage = "Pending";
         let statusColor = "black";
 
         if (offeredStr) {
             const offeredDate = getLocalDate(offeredStr);
-            
-            // Logic: Did we offer a date on or before the due date?
-            // OR did the member decline (which usually counts as compliant in many systems)
+
             if (offeredDate <= dueDate || outcome === "declined") {
-                statusMessage = "✅ COMPLIANT - Target Met";
+                statusMessage = "✅ COMPLIANT - Target Date Met";
                 statusColor = "green";
             } else {
-                statusMessage = "❌ NON-COMPLIANT - Target Missed";
+                statusMessage = "❌ NON-COMPLIANT - Target Date Missed";
                 statusColor = "red";
             }
         } else {
@@ -145,7 +137,6 @@
             statusColor = "#d9534f";
         }
 
-        // 4. Update UI
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         
         document.getElementById("displayDueDate").textContent = dueDate.toLocaleDateString('en-US', options);
@@ -156,7 +147,6 @@
         statusEl.style.color = statusColor;
         statusEl.style.fontWeight = "bold";
 
-        // Show results
         document.getElementById("resultSection").classList.remove("hidden");
     }
 </script>
