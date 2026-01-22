@@ -20,15 +20,15 @@
 <div class="container">
     <h2>Target & Due Date Calculator</h2>
     
-    <label for="appointmentDate">Outreach / Contact Date:</label>
+    <label for="appointmentDate">Referral / Outreach / Contact Date:</label>
     <input type="date" id="appointmentDate">
     
     <label for="appointmentType">Appointment Type:</label>
     <select id="appointmentType">
         <option value="therapy">Intake / FIC Therapy (14 cal / 10 bus)</option>
-        <option value="urgent">Urgent (1 calendar day)</option>
         <option value="followup">Follow-Up (7 cal / 5 bus)</option>
         <option value="routine">MD Routine (15 business days)</option>
+        <option value="urgent">Urgent (1 calendar day)</option>
         <option value="posh">POSH (3 calendar days)</option>
     </select>
     
@@ -43,7 +43,7 @@
         <option value="met">Target Date Met</option>
         <option value="declined">Member Declined First Offer</option>
         <option value="unavailable">Provider Unavailable</option>
-        <option value="no_show">No Show / Cancellation</option>
+        <option value="no_show">Member No Show / Cancellation</option>
     </select>
     
     <button onclick="calculateDetails()">Calculate & Document</button>
@@ -61,7 +61,7 @@
         "therapy":  { cal: 14, bus: 10 },
         "urgent":   { cal: 1,  bus: 0 },
         "followup": { cal: 7,  bus: 5 },
-        "routine":  { cal: 0,  bus: 15 },
+        "routine":  { cal: 15, bus: 0 },
         "posh":     { cal: 3,  bus: 0 }
     };
 
