@@ -94,7 +94,6 @@
 
 <script>
     // --- RULES CONFIGURATION ---
-    // Updated: Cancellations now use the same logic as standard intake to ensure 10 Business Days
     const RULES = {
         "therapy":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
         "consult":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
@@ -119,7 +118,7 @@
         if (scenario === "crisis") {
             document.getElementById("crisisAlert").style.display = "block";
         } else {
-            // Guardrail: POSH cancellations must be transferred [cite: 1269]
+            // Guardrail: POSH cancellations must be transferred
             if (scenario === "cancel" && apptType === "posh") {
                 document.getElementById("poshCancelAlert").style.display = "block";
             } else {
@@ -135,7 +134,6 @@
         
         // Update Rule Text based on Scenario
         if (scenario === "cancel") {
-             // Updated to reflect the 10 Business Day logic requested
             document.getElementById("ruleText").textContent = "Reschedule: 10 Business Days (approx 14 Calendar)";
             document.getElementById("dateLabel").textContent = "Original Target / Referral Date:";
             if (type === "posh") handleScenarioChange(); 
@@ -178,11 +176,20 @@
         const rule = RULES[type];
         let methodText = "";
 
+        // --- SAFETY CHECK: FUTURE DATE WARNING ---
+        const today = new Date();
+        today.setHours(0,0,0,0); // Normalize today to midnight for fair comparison
+
+        if (startDate > today && type !== "posh") {
+            const confirmFuture = confirm("⚠️ WARNING: You selected a future date.\n\nIs this correct? (Usually 'Contact Date' is today or in the past).");
+            if (!confirmFuture) return; // Stop calculation if they clicked Cancel
+        }
+
         // --- CALCULATION LOGIC ---
         
         if (scenario === "cancel") {
             // CANCELLATION LOGIC:
-            // Ensuring 10 Business Days (which equates to 14 Calendar Days)
+            // Ensuring 10 Business Days
             calculatedTargetDate = addBusinessDays(startDate, 10);
             methodText = "Calculated based on 10 Business Days from Original Target";
         } 
@@ -205,42 +212,4 @@
         document.getElementById("resultArea").style.display = "block";
         
         // Reset compliance fields
-        document.getElementById("finalStatus").textContent = "PENDING INPUT";
-        document.getElementById("finalStatus").className = "status-fail"; 
-        document.getElementById("actionItem").textContent = "Enter an offered date or select EPN to verify compliance.";
-        
-        checkCompliance(); 
-    }
-
-    function checkCompliance() {
-        const offeredStr = document.getElementById("offeredDate").value;
-        const isEpn = document.getElementById("epnCheck").checked;
-        const statusEl = document.getElementById("finalStatus");
-        const actionEl = document.getElementById("actionItem");
-
-        if (isEpn) {
-            statusEl.textContent = "✅ COMPLIANT (EPN Offered)";
-            statusEl.className = "status-pass";
-            actionEl.textContent = "Offering external network (Rula/Lucet) satisfies access standards.";
-            return;
-        }
-
-        if (offeredStr && calculatedTargetDate) {
-            const parts = offeredStr.split('-');
-            const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
-
-            if (offeredDate <= calculatedTargetDate) {
-                statusEl.textContent = "✅ COMPLIANT (Target Met)";
-                statusEl.className = "status-pass";
-                actionEl.textContent = "Great job! The offered date is within the required timeframe.";
-            } else {
-                statusEl.textContent = "⚠️ OUT OF TARGET";
-                statusEl.className = "status-fail";
-                actionEl.textContent = "If member declined earlier dates, ensure you document 'Member Declined'. If no appointments available, send SB-855 letter.";
-            }
-        }
-    }
-</script>
-
-</body>
-</html>
+        document.getElementById("finalStatus
