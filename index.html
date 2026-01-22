@@ -25,6 +25,7 @@
         
         .hidden { display: none !important; }
         .helper-text { font-size: 0.85em; color: #777; margin-top: 4px; font-style: italic; }
+        
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
     </style>
@@ -34,9 +35,9 @@
 <div class="card">
     <h2>Mental Health Target Calculator</h2>
 
-    <label for="callType">1. What is the Call Reason?</label>
+    <label for="callType">1. Select Scenario:</label>
     <select id="callType" onchange="handleScenarioChange()">
-        <option value="" disabled selected>-- Select Scenario --</option>
+        <option value="" disabled selected>-- Choose One --</option>
         <option value="new">New Appointment Request</option>
         <option value="cancel">Cancellation / Reschedule</option>
         <option value="crisis">🚨 CRISIS / Safety Concern</option>
@@ -45,12 +46,12 @@
     <div id="crisisAlert" class="alert-box alert-crisis">
         <h3>🛑 STOP: DO NOT BOOK</h3>
         <p><strong>Protocol:</strong> Immediate Warm Transfer to OD Pool or Access & Crisis Line.</p>
-        <p><em>(Suicidal/Homicidal risk, hallucinations, domestic violence < 48hrs)</em></p>
+        <p><em>Criteria: Suicidal/Homicidal risk, hallucinations, domestic violence < 48hrs.</em></p>
     </div>
 
     <div id="poshCancelAlert" class="alert-box alert-warning">
-        <h3>⚠️ Call Center Cannot Reschedule</h3>
-        <p>For POSH cancellations/reschedules, you must <strong>Warm Transfer</strong> to the clinic Back Office line.</p>
+        <h3>⚠️ Transfer Required</h3>
+        <p>Call Center cannot reschedule POSH. Please <strong>Warm Transfer</strong> to the clinic Back Office.</p>
     </div>
 
     <div id="mainInputs" class="hidden">
@@ -86,7 +87,7 @@
         <input type="date" id="offeredDate" onchange="checkCompliance()">
 
         <div style="margin-top: 20px; text-align: center;">
-            <div id="finalStatus" class="status-pass">PENDING INPUT</div>
+            <div id="finalStatus" class="status-fail">PENDING INPUT</div>
             <div id="actionItem" class="helper-text"></div>
         </div>
     </div>
@@ -105,26 +106,27 @@
 
     let calculatedTargetDate = null;
 
+    // --- VIEW CONTROLLER ---
     function handleScenarioChange() {
         const scenario = document.getElementById("callType").value;
         const apptType = document.getElementById("apptType").value;
         
-        // Reset Views
+        // 1. Hide everything first (Clean Slate)
         document.getElementById("crisisAlert").style.display = "none";
         document.getElementById("poshCancelAlert").style.display = "none";
         document.getElementById("mainInputs").classList.add("hidden");
         document.getElementById("resultArea").style.display = "none";
 
+        // 2. Show relevant section
         if (scenario === "crisis") {
             document.getElementById("crisisAlert").style.display = "block";
+        } else if (scenario === "cancel" && apptType === "posh") {
+            // Guardrail: Cannot reschedule POSH
+            document.getElementById("poshCancelAlert").style.display = "block";
         } else {
-            // Guardrail: POSH cancellations must be transferred
-            if (scenario === "cancel" && apptType === "posh") {
-                document.getElementById("poshCancelAlert").style.display = "block";
-            } else {
-                document.getElementById("mainInputs").classList.remove("hidden");
-                updateLabels();
-            }
+            // Show Calculator
+            document.getElementById("mainInputs").classList.remove("hidden");
+            updateLabels();
         }
     }
 
@@ -132,18 +134,23 @@
         const type = document.getElementById("apptType").value;
         const scenario = document.getElementById("callType").value;
         
-        // Update Rule Text based on Scenario
+        // Re-check POSH guardrail in case user changed dropdown while in Cancel mode
+        if (scenario === "cancel" && type === "posh") {
+            handleScenarioChange(); 
+            return;
+        }
+
+        // Update Text
         if (scenario === "cancel") {
             document.getElementById("ruleText").textContent = "Reschedule: 10 Business Days (approx 14 Calendar)";
             document.getElementById("dateLabel").textContent = "Original Target / Referral Date:";
-            if (type === "posh") handleScenarioChange(); 
         } else {
             document.getElementById("ruleText").textContent = RULES[type].note;
             document.getElementById("dateLabel").textContent = (type === "posh") ? "Hospital Discharge Date:" : "Referral / Contact Date:";
         }
     }
 
-    // Helper: Add Business Days (Skips Sat/Sun)
+    // --- DATE HELPERS ---
     function addBusinessDays(date, days) {
         let result = new Date(date);
         let added = 0;
@@ -156,60 +163,93 @@
         return result;
     }
 
-    // Helper: Add Calendar Days
     function addCalendarDays(date, days) {
         let result = new Date(date);
         result.setDate(result.getDate() + days);
         return result;
     }
 
+    // --- MAIN CALCULATION ---
     function calculateTarget() {
         const startStr = document.getElementById("startDate").value;
         const type = document.getElementById("apptType").value;
         const scenario = document.getElementById("callType").value;
 
-        if (!startStr) { alert("Please enter a date first."); return; }
+        if (!startStr) { alert("Please select a date first."); return; }
 
-        // Fix Timezone issue
+        // Create Date Object (Fixing Timezone Issue)
         const parts = startStr.split('-');
         const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        
+        // SAFETY CHECK: Future Date Warning
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        if (startDate > today && type !== "posh") {
+            const confirmFuture = confirm("⚠️ WARNING: You selected a future date.\n\nIs this correct? (Usually 'Contact Date' is today or in the past).");
+            if (!confirmFuture) return; 
+        }
+
         const rule = RULES[type];
         let methodText = "";
 
-        // --- SAFETY CHECK: FUTURE DATE WARNING ---
-        const today = new Date();
-        today.setHours(0,0,0,0); // Normalize today to midnight for fair comparison
-
-        if (startDate > today && type !== "posh") {
-            const confirmFuture = confirm("⚠️ WARNING: You selected a future date.\n\nIs this correct? (Usually 'Contact Date' is today or in the past).");
-            if (!confirmFuture) return; // Stop calculation if they clicked Cancel
-        }
-
-        // --- CALCULATION LOGIC ---
-        
         if (scenario === "cancel") {
-            // CANCELLATION LOGIC:
-            // Ensuring 10 Business Days
+            // Cancellation Logic: 10 Business Days
             calculatedTargetDate = addBusinessDays(startDate, 10);
             methodText = "Calculated based on 10 Business Days from Original Target";
-        } 
-        else {
-            // STANDARD LOGIC:
-            // If the rule has specific business days defined (like Routine or Therapy), prioritize that.
+        } else {
+            // Standard Logic
             if (rule.bus > 0) {
                 calculatedTargetDate = addBusinessDays(startDate, rule.bus);
-                methodText = `Calculated based on ${rule.bus} Business Days`;
+                methodText = "Calculated based on " + rule.bus + " Business Days";
             } else {
                 calculatedTargetDate = addCalendarDays(startDate, rule.cal);
-                methodText = `Calculated based on ${rule.cal} Calendar Days`;
+                methodText = "Calculated based on " + rule.cal + " Calendar Days";
             }
         }
 
-        // Show Results
+        // Display Result
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
-        // Reset compliance fields
-        document.getElementById("finalStatus
+        // Reset Compliance
+        document.getElementById("finalStatus").textContent = "PENDING INPUT";
+        document.getElementById("finalStatus").className = "status-fail"; 
+        document.getElementById("actionItem").textContent = "Enter an offered date or select EPN to verify compliance.";
+        
+        checkCompliance();
+    }
+
+    function checkCompliance() {
+        const offeredStr = document.getElementById("offeredDate").value;
+        const isEpn = document.getElementById("epnCheck").checked;
+        const statusEl = document.getElementById("finalStatus");
+        const actionEl = document.getElementById("actionItem");
+
+        if (isEpn) {
+            statusEl.textContent = "✅ COMPLIANT (EPN Offered)";
+            statusEl.className = "status-pass";
+            actionEl.textContent = "Offering external network (Rula/Lucet) satisfies access standards.";
+            return;
+        }
+
+        if (offeredStr && calculatedTargetDate) {
+            const parts = offeredStr.split('-');
+            const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
+
+            if (offeredDate <= calculatedTargetDate) {
+                statusEl.textContent = "✅ COMPLIANT (Target Met)";
+                statusEl.className = "status-pass";
+                actionEl.textContent = "Great job! The offered date is within the required timeframe.";
+            } else {
+                statusEl.textContent = "⚠️ OUT OF TARGET";
+                statusEl.className = "status-fail";
+                actionEl.textContent = "If member declined earlier dates, mark as 'Member Declined'. If no appointments available, send SB-855 letter.";
+            }
+        }
+    }
+</script>
+
+</body>
+</html>
