@@ -3,226 +3,242 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mental Health Target Date & Workflow Calculator</title>
+    <title>Mental Health Scheduler</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
-        .container { max-width: 700px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h2 { color: #007bff; margin-bottom: 20px; }
-        .section-title { font-size: 1.1em; font-weight: bold; color: #555; text-align: left; margin-top: 20px; border-bottom: 2px solid #eee; padding-bottom: 5px;}
+        :root { --primary: #0070e0; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
         
-        label { display: block; margin-top: 15px; font-weight: 600; text-align: left; color: #333; }
-        input, select { width: 100%; padding: 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        .card { background: var(--card); width: 100%; max-width: 600px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        h2 { margin-top: 0; color: var(--primary); text-align: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 25px; }
         
-        /* Highlight specific inputs */
-        .highlight-box { background-color: #e3f2fd; padding: 15px; border-radius: 6px; margin-top: 15px; border: 1px solid #bbdefb; }
+        label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.95em; color: #555; }
+        select, input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; transition: border 0.2s; box-sizing: border-box;}
+        select:focus, input:focus { border-color: var(--primary); outline: none; background-color: #fff; }
         
-        button { margin-top: 25px; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: background 0.3s; }
+        button { width: 100%; margin-top: 25px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background-color: #0056b3; }
         
-        .result-box { margin-top: 25px; padding: 20px; background-color: #e9ecef; border-radius: 6px; text-align: left; border-left: 8px solid #007bff; }
-        .hidden { display: none; }
-        .note { font-size: 0.85em; color: #666; margin-top: 5px; text-align: left; font-style: italic; }
+        .alert-box { padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
+        .alert-crisis { background-color: #ffebee; border-left: 6px solid #d32f2f; color: #c62828; }
+        .alert-warning { background-color: #fff3cd; border-left: 6px solid #ffc107; color: #856404; }
+        .result-section { background-color: #e8f4fd; border-left: 6px solid var(--primary); padding: 20px; border-radius: 8px; margin-top: 25px; display: none; }
         
-        /* Status Colors */
-        .compliant { color: #28a745; font-weight: bold; }
-        .non-compliant { color: #dc3545; font-weight: bold; }
-        .crisis-alert { background-color: #ffebee; border-left: 8px solid #d32f2f; color: #c62828; }
+        .hidden { display: none !important; }
+        .helper-text { font-size: 0.85em; color: #777; margin-top: 4px; font-style: italic; }
+        .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
+        .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Mental Health Target & Workflow App</h2>
-    
-    <div class="section-title">Step 1: Workflow Scenario</div>
-    <label for="workflowType">Select Workflow:</label>
-    <select id="workflowType" onchange="updateUI()">
+<div class="card">
+    <h2>Mental Health Target Calculator</h2>
+
+    <label for="callType">1. What is the Call Reason?</label>
+    <select id="callType" onchange="handleScenarioChange()">
+        <option value="" disabled selected>-- Select Scenario --</option>
         <option value="new">New Appointment Request</option>
-        <option value="cancellation">Cancellation / Reschedule (10-Day Rule)</option>
-        <option value="crisis">Crisis / Red Flag (Safety Concern)</option>
+        <option value="cancel">Cancellation / Reschedule</option>
+        <option value="crisis">🚨 CRISIS / Safety Concern</option>
     </select>
 
-    <div id="crisisWarning" class="result-box crisis-alert hidden">
-        <h3>🛑 STOP - DO NOT BOOK FUTURE DATE</h3>
+    <div id="crisisAlert" class="alert-box alert-crisis">
+        <h3>🛑 STOP: DO NOT BOOK</h3>
         <p><strong>Protocol:</strong> Immediate Warm Transfer to OD Pool or Access & Crisis Line.</p>
-        <p><strong>Criteria:</strong> Suicidal/Homicidal ideation, hallucinations, or domestic violence within 48hrs[cite: 1240].</p>
+        <p><em>(Suicidal/Homicidal risk, hallucinations, domestic violence < 48hrs)</em></p>
     </div>
 
-    <div id="calculationSection">
-        <div class="section-title">Step 2: Appointment Details</div>
-        
-        <label for="appointmentDate" id="dateLabel">Referral / Contact Date:</label>
-        <input type="date" id="appointmentDate">
-        
-        <label for="appointmentType">Appointment Category:</label>
-        <select id="appointmentType" onchange="updateNote()">
-            <option value="therapy">Intake / FIC Therapy (14 cal / 10 bus)</option>
-            <option value="consult">MD Consult / Intake (14 cal / 10 bus)</option>
-            <option value="urgent">Urgent (1 Calendar Day)</option>
-            <option value="followup">Follow-Up (7 cal / 5 bus)</option>
-            <option value="routine">MD Routine (15 Business Days)</option>
-            <option value="posh">POSH (3 Days from Discharge)</option>
-        </select>
-        <div id="typeNote" class="note">Standard: 14 Calendar or 10 Business days</div>
+    <div id="poshCancelAlert" class="alert-box alert-warning">
+        <h3>⚠️ Call Center Cannot Reschedule</h3>
+        <p>For POSH cancellations/reschedules, you must <strong>Warm Transfer</strong> to the clinic Back Office line.</p>
+    </div>
 
-        <div class="section-title">Step 3: Documentation & Compliance</div>
+    <div id="mainInputs" class="hidden">
+        <label for="apptType">2. Appointment Category:</label>
+        <select id="apptType" onchange="updateLabels()">
+            <option value="therapy">Intake / FIC Therapy</option>
+            <option value="consult">MD Consult / Intake</option>
+            <option value="followup">Follow-Up</option>
+            <option value="routine">MD Routine</option>
+            <option value="posh">POSH (Hospital Discharge)</option>
+            <option value="urgent">Urgent</option>
+        </select>
+        <div id="ruleText" class="helper-text">Standard: 14 Calendar or 10 Business days</div>
+
+        <label id="dateLabel" for="startDate">3. Referral / Contact Date:</label>
+        <input type="date" id="startDate">
+
+        <button onclick="calculateTarget()">Calculate Target Date</button>
+    </div>
+
+    <div id="resultArea" class="result-section">
+        <div><strong>Target Due Date:</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
+        <div id="calcMethod" class="helper-text" style="margin-bottom: 10px;"></div>
+        <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
-        <div class="highlight-box">
-            <label for="epnOffered">Was EPN / Rula / Lucet Offered?</label>
-            <select id="epnOffered">
-                <option value="no">No</option>
-                <option value="yes">Yes (Counts as Compliant Offer)</option>
-            </select>
-            <div class="note">Offering external network satisfies access standards.</div>
+        <label>4. Compliance Check:</label>
+        <div style="margin-bottom:10px;">
+            <input type="checkbox" id="epnCheck" onchange="checkCompliance()" style="width:auto;"> 
+            <span style="font-weight:bold; color:#0070e0;">Was EPN / Rula / Lucet offered?</span>
         </div>
 
-        <label for="firstOfferedDate">First Offered Appointment Date (Internal):</label>
-        <input type="date" id="firstOfferedDate">
+        <label>First Offered Appointment Date:</label>
+        <input type="date" id="offeredDate" onchange="checkCompliance()">
 
-        <label for="outcome">Member Outcome:</label>
-        <select id="outcome">
-            <option value="met">Accepted Date</option>
-            <option value="declined">Declined First Offer (Compliant)</option>
-            <option value="unavailable">Provider Unavailable (Non-Compliant)</option>
-        </select>
-        
-        <button onclick="calculateDetails()">Calculate Status</button>
-    </div>
-    
-    <div id="resultSection" class="result-box hidden">
-        <p><strong>Target Due Date:</strong> <span id="displayDueDate"></span></p>
-        <p><strong>Compliance Status:</strong> <span id="displayStatus"></span></p>
-        <p id="workflowNote" class="note"></p>
+        <div style="margin-top: 20px; text-align: center;">
+            <div id="finalStatus" class="status-pass">PENDING INPUT</div>
+            <div id="actionItem" class="helper-text"></div>
+        </div>
     </div>
 </div>
 
 <script>
-    const APPOINTMENT_RULES = {
-        "therapy":  { cal: 14, bus: 10, note: "Standard: 14 Calendar or 10 Business days" },
-        "consult":  { cal: 14, bus: 10, note: "Standard: 14 Calendar or 10 Business days" },
-        "urgent":   { cal: 1,  bus: 0,  note: "Urgent: 1 Calendar Day" },
-        "followup": { cal: 7,  bus: 5,  note: "Follow-Up: 7 Calendar or 5 Business days" },
-        "routine":  { cal: 0,  bus: 15, note: "Routine: 15 Business Days" }, 
-        "posh":     { cal: 3,  bus: 0,  note: "POSH: 3 Calendar Days from Discharge [cite: 1261]" }
+    // --- RULES CONFIGURATION ---
+    // Updated: Cancellations now use the same logic as standard intake to ensure 10 Business Days
+    const RULES = {
+        "therapy":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
+        "consult":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
+        "followup": { cal: 7,  bus: 5,  note: "7 Calendar / 5 Business Days" },
+        "routine":  { cal: 0,  bus: 15, note: "15 Business Days" },
+        "posh":     { cal: 3,  bus: 0,  note: "3 Calendar Days from Discharge" },
+        "urgent":   { cal: 1,  bus: 0,  note: "1 Calendar Day" }
     };
 
-    function updateUI() {
-        const workflow = document.getElementById("workflowType").value;
-        const crisisDiv = document.getElementById("crisisWarning");
-        const calcDiv = document.getElementById("calculationSection");
-        const dateLabel = document.getElementById("dateLabel");
+    let calculatedTargetDate = null;
 
-        if (workflow === "crisis") {
-            crisisDiv.classList.remove("hidden");
-            calcDiv.classList.add("hidden");
-            document.getElementById("resultSection").classList.add("hidden");
+    function handleScenarioChange() {
+        const scenario = document.getElementById("callType").value;
+        const apptType = document.getElementById("apptType").value;
+        
+        // Reset Views
+        document.getElementById("crisisAlert").style.display = "none";
+        document.getElementById("poshCancelAlert").style.display = "none";
+        document.getElementById("mainInputs").classList.add("hidden");
+        document.getElementById("resultArea").style.display = "none";
+
+        if (scenario === "crisis") {
+            document.getElementById("crisisAlert").style.display = "block";
         } else {
-            crisisDiv.classList.add("hidden");
-            calcDiv.classList.remove("hidden");
-            
-            if (workflow === "cancellation") {
-                dateLabel.textContent = "Original Referral/Target Date:";
-                document.getElementById("typeNote").textContent = "Reschedule Rule: Offer must be within 10 days of original target ";
+            // Guardrail: POSH cancellations must be transferred [cite: 1269]
+            if (scenario === "cancel" && apptType === "posh") {
+                document.getElementById("poshCancelAlert").style.display = "block";
             } else {
-                dateLabel.textContent = "Referral / Contact / Discharge Date:";
-                updateNote();
+                document.getElementById("mainInputs").classList.remove("hidden");
+                updateLabels();
             }
         }
     }
 
-    function updateNote() {
-        const type = document.getElementById("appointmentType").value;
-        document.getElementById("typeNote").textContent = APPOINTMENT_RULES[type].note;
+    function updateLabels() {
+        const type = document.getElementById("apptType").value;
+        const scenario = document.getElementById("callType").value;
         
-        if (type === "posh") {
-            document.getElementById("dateLabel").textContent = "Hospital Discharge Date:";
+        // Update Rule Text based on Scenario
+        if (scenario === "cancel") {
+             // Updated to reflect the 10 Business Day logic requested
+            document.getElementById("ruleText").textContent = "Reschedule: 10 Business Days (approx 14 Calendar)";
+            document.getElementById("dateLabel").textContent = "Original Target / Referral Date:";
+            if (type === "posh") handleScenarioChange(); 
+        } else {
+            document.getElementById("ruleText").textContent = RULES[type].note;
+            document.getElementById("dateLabel").textContent = (type === "posh") ? "Hospital Discharge Date:" : "Referral / Contact Date:";
         }
     }
 
-    function getLocalDate(dateString) {
-        if (!dateString) return null;
-        const parts = dateString.split('-');
-        return new Date(parts[0], parts[1] - 1, parts[2]); 
-    }
-
+    // Helper: Add Business Days (Skips Sat/Sun)
     function addBusinessDays(date, days) {
-        let count = 0;
-        let resultDate = new Date(date); 
-        while (count < days) {
-            resultDate.setDate(resultDate.getDate() + 1);
-            const dayOfWeek = resultDate.getDay();
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+        let result = new Date(date);
+        let added = 0;
+        while (added < days) {
+            result.setDate(result.getDate() + 1);
+            if (result.getDay() !== 0 && result.getDay() !== 6) {
+                added++;
+            }
         }
-        return resultDate;
+        return result;
     }
 
+    // Helper: Add Calendar Days
     function addCalendarDays(date, days) {
-        let resultDate = new Date(date);
-        resultDate.setDate(resultDate.getDate() + days);
-        return resultDate;
+        let result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
     }
 
-    function calculateDetails() {
-        const workflow = document.getElementById("workflowType").value;
-        const startStr = document.getElementById("appointmentDate").value;
-        const offeredStr = document.getElementById("firstOfferedDate").value;
-        const type = document.getElementById("appointmentType").value;
-        const outcome = document.getElementById("outcome").value;
-        const epnOffered = document.getElementById("epnOffered").value;
+    function calculateTarget() {
+        const startStr = document.getElementById("startDate").value;
+        const type = document.getElementById("apptType").value;
+        const scenario = document.getElementById("callType").value;
 
-        if (!startStr) { alert("Please select a Date."); return; }
+        if (!startStr) { alert("Please enter a date first."); return; }
 
-        const startDate = getLocalDate(startStr);
-        const rule = APPOINTMENT_RULES[type];
-        let dueDate;
+        // Fix Timezone issue
+        const parts = startStr.split('-');
+        const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
+        const rule = RULES[type];
+        let methodText = "";
 
         // --- CALCULATION LOGIC ---
-        if (workflow === "cancellation") {
-            // Rule from PDF Page 57: Reschedule offer must be by 10 days of referral/target date
-            dueDate = addCalendarDays(startDate, 10); 
-        } else if (rule.bus > 0) {
-            dueDate = addBusinessDays(startDate, rule.bus);
-        } else {
-            dueDate = addCalendarDays(startDate, rule.cal);
-        }
-
-        // --- COMPLIANCE LOGIC ---
-        let statusMessage = "Pending";
-        let statusClass = "non-compliant";
-        let noteText = "";
-
-        // 1. Check EPN (Rula/Lucet) - PDF emphasizes this as a valid offer 
-        if (epnOffered === "yes") {
-            statusMessage = "✅ COMPLIANT (EPN Offered)";
-            statusClass = "compliant";
-            noteText = "Offering external network (Rula/Lucet) satisfies access standards.";
+        
+        if (scenario === "cancel") {
+            // CANCELLATION LOGIC:
+            // Ensuring 10 Business Days (which equates to 14 Calendar Days)
+            calculatedTargetDate = addBusinessDays(startDate, 10);
+            methodText = "Calculated based on 10 Business Days from Original Target";
         } 
-        // 2. Check Internal Offer Date
-        else if (offeredStr) {
-            const offeredDate = getLocalDate(offeredStr);
-            if (offeredDate <= dueDate || outcome === "declined") {
-                statusMessage = "✅ COMPLIANT - Target Met";
-                statusClass = "compliant";
+        else {
+            // STANDARD LOGIC:
+            // If the rule has specific business days defined (like Routine or Therapy), prioritize that.
+            if (rule.bus > 0) {
+                calculatedTargetDate = addBusinessDays(startDate, rule.bus);
+                methodText = `Calculated based on ${rule.bus} Business Days`;
             } else {
-                statusMessage = "❌ NON-COMPLIANT - Target Missed";
-                statusClass = "non-compliant";
-                noteText = "Offer was outside the target timeframe. Ensure SB-855 letter is sent if no EPN offered[cite: 338].";
+                calculatedTargetDate = addCalendarDays(startDate, rule.cal);
+                methodText = `Calculated based on ${rule.cal} Calendar Days`;
             }
-        } else {
-            statusMessage = "⚠️ Waiting for 'First Offered Date' or EPN Offer";
-            statusClass = "non-compliant";
         }
 
-        // --- UPDATE UI ---
-        const options = { year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById("displayDueDate").textContent = dueDate.toLocaleDateString('en-US', options);
+        // Show Results
+        const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
+        document.getElementById("calcMethod").textContent = methodText;
+        document.getElementById("resultArea").style.display = "block";
         
-        const statusEl = document.getElementById("displayStatus");
-        statusEl.textContent = statusMessage;
-        statusEl.className = statusClass;
+        // Reset compliance fields
+        document.getElementById("finalStatus").textContent = "PENDING INPUT";
+        document.getElementById("finalStatus").className = "status-fail"; 
+        document.getElementById("actionItem").textContent = "Enter an offered date or select EPN to verify compliance.";
         
-        document.getElementById("workflowNote").textContent = noteText;
-        document.getElementById("resultSection").classList.remove("hidden");
+        checkCompliance(); 
+    }
+
+    function checkCompliance() {
+        const offeredStr = document.getElementById("offeredDate").value;
+        const isEpn = document.getElementById("epnCheck").checked;
+        const statusEl = document.getElementById("finalStatus");
+        const actionEl = document.getElementById("actionItem");
+
+        if (isEpn) {
+            statusEl.textContent = "✅ COMPLIANT (EPN Offered)";
+            statusEl.className = "status-pass";
+            actionEl.textContent = "Offering external network (Rula/Lucet) satisfies access standards.";
+            return;
+        }
+
+        if (offeredStr && calculatedTargetDate) {
+            const parts = offeredStr.split('-');
+            const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
+
+            if (offeredDate <= calculatedTargetDate) {
+                statusEl.textContent = "✅ COMPLIANT (Target Met)";
+                statusEl.className = "status-pass";
+                actionEl.textContent = "Great job! The offered date is within the required timeframe.";
+            } else {
+                statusEl.textContent = "⚠️ OUT OF TARGET";
+                statusEl.className = "status-fail";
+                actionEl.textContent = "If member declined earlier dates, ensure you document 'Member Declined'. If no appointments available, send SB-855 letter.";
+            }
+        }
     }
 </script>
 
