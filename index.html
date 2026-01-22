@@ -12,9 +12,12 @@
         h2 { margin-top: 0; color: var(--primary); text-align: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 25px; }
         
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.95em; color: #555; }
+        
+        /* UPDATED: Added cursor pointer for date inputs */
         select, input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; transition: border 0.2s; box-sizing: border-box;}
         select:focus, input:focus { border-color: var(--primary); outline: none; background-color: #fff; }
-        
+        input[type="date"] { cursor: pointer; } 
+
         button { width: 100%; margin-top: 25px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background-color: #0056b3; }
         
@@ -67,7 +70,7 @@
         <div id="ruleText" class="helper-text">Standard: 14 Calendar or 10 Business days</div>
 
         <label id="dateLabel" for="startDate">3. Referral / Contact Date:</label>
-        <input type="date" id="startDate">
+        <input type="date" id="startDate" onclick="try{this.showPicker()}catch(e){}">
 
         <button onclick="calculateTarget()">Calculate Target Date</button>
     </div>
@@ -84,7 +87,7 @@
         </div>
 
         <label>First Offered Appointment Date:</label>
-        <input type="date" id="offeredDate" onchange="checkCompliance()">
+        <input type="date" id="offeredDate" onchange="checkCompliance()" onclick="try{this.showPicker()}catch(e){}">
 
         <div style="margin-top: 20px; text-align: center;">
             <div id="finalStatus" class="status-fail">PENDING INPUT</div>
@@ -111,7 +114,7 @@
         const scenario = document.getElementById("callType").value;
         const apptType = document.getElementById("apptType").value;
         
-        // 1. Hide everything first (Clean Slate)
+        // 1. Hide everything first
         document.getElementById("crisisAlert").style.display = "none";
         document.getElementById("poshCancelAlert").style.display = "none";
         document.getElementById("mainInputs").classList.add("hidden");
@@ -121,10 +124,8 @@
         if (scenario === "crisis") {
             document.getElementById("crisisAlert").style.display = "block";
         } else if (scenario === "cancel" && apptType === "posh") {
-            // Guardrail: Cannot reschedule POSH
             document.getElementById("poshCancelAlert").style.display = "block";
         } else {
-            // Show Calculator
             document.getElementById("mainInputs").classList.remove("hidden");
             updateLabels();
         }
@@ -134,16 +135,10 @@
         const type = document.getElementById("apptType").value;
         const scenario = document.getElementById("callType").value;
         
-        // Re-check POSH guardrail in case user changed dropdown while in Cancel mode
-        if (scenario === "cancel" && type === "posh") {
-            handleScenarioChange(); 
-            return;
-        }
-
-        // Update Text
         if (scenario === "cancel") {
             document.getElementById("ruleText").textContent = "Reschedule: 10 Business Days (approx 14 Calendar)";
-            document.getElementById("dateLabel").textContent = "Original Target / Referral Date:";
+            document.getElementById("dateLabel").textContent = "Original Target / Last Seen Date:";
+            if (type === "posh") handleScenarioChange(); 
         } else {
             document.getElementById("ruleText").textContent = RULES[type].note;
             document.getElementById("dateLabel").textContent = (type === "posh") ? "Hospital Discharge Date:" : "Referral / Contact Date:";
@@ -177,7 +172,6 @@
 
         if (!startStr) { alert("Please select a date first."); return; }
 
-        // Create Date Object (Fixing Timezone Issue)
         const parts = startStr.split('-');
         const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
         
@@ -193,11 +187,9 @@
         let methodText = "";
 
         if (scenario === "cancel") {
-            // Cancellation Logic: 10 Business Days
             calculatedTargetDate = addBusinessDays(startDate, 10);
             methodText = "Calculated based on 10 Business Days from Original Target";
         } else {
-            // Standard Logic
             if (rule.bus > 0) {
                 calculatedTargetDate = addBusinessDays(startDate, rule.bus);
                 methodText = "Calculated based on " + rule.bus + " Business Days";
@@ -207,13 +199,11 @@
             }
         }
 
-        // Display Result
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
-        // Reset Compliance
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
         document.getElementById("actionItem").textContent = "Enter an offered date or select EPN to verify compliance.";
