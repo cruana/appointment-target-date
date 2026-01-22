@@ -3,86 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Appointment Due Date App</title>
+    <title>Mental Health Team Calculator</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        input, select { padding: 10px; margin: 10px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        label { display: block; margin-top: 15px; font-weight: bold; text-align: left; }
+        input, select { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;}
+        button { margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #218838; }
+        .result-box { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 4px; text-align: left; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <h2>Appointment Due Date Calculator</h2>
+
+<div class="container">
+    <h2>Target & Due Date Calculator</h2>
     
-    <label for="appointmentDate">Select Appointment Date:</label>
+    <label for="appointmentDate">Request / Trigger Date:</label>
     <input type="date" id="appointmentDate">
     
-    <label for="appointmentType">Select Appointment Type:</label>
+    <label for="appointmentType">Appointment Type:</label>
     <select id="appointmentType">
-        <option value="therapy">Intake / FIC Therapy (14 calendar / 10 business days)</option>
+        <option value="therapy">Intake / FIC Therapy (14 cal / 10 bus)</option>
         <option value="urgent">Urgent (1 calendar day)</option>
-        <option value="follwo-up">Follow-Up (7 calendar / 5 business days)</option>
+        <option value="followup">Follow-Up (7 cal / 5 bus)</option>
         <option value="routine">MD Routine (15 business days)</option>
         <option value="posh">POSH (3 calendar days)</option>
     </select>
     
-    <button onclick="calculateDueDate()">Calculate Due Date</button>
+    <hr>
+
+    <h3>Documentation</h3>
+    <label for="firstOfferedDate">First Offered Appointment Date:</label>
+    <input type="date" id="firstOfferedDate">
+
+    <label for="outcome">Outcome / Scenario:</label>
+    <select id="outcome">
+        <option value="met">Target Met</option>
+        <option value="declined">Member Declined First Offer</option>
+        <option value="unavailable">Provider Unavailable</option>
+        <option value="no_show">No Show / Cancellation</option>
+    </select>
     
-    <h3>Due Date: <span id="dueDate"></span></h3>
+    <button onclick="calculateDetails()">Calculate & Document</button>
+    
+    <div id="resultSection" class="result-box hidden">
+        <p><strong>Target Due Date:</strong> <span id="displayDueDate"></span></p>
+        <p><strong>First Offered:</strong> <span id="displayOfferedDate"></span></p>
+        <p><strong>Compliance Status:</strong> <span id="displayStatus"></span></p>
+    </div>
+</div>
 
-    <script>
-        function addBusinessDays(date, days) {
-            let count = 0;
-            while (count < days) {
-                date.setDate(date.getDate() + 1);
-                // Skip Saturday (6) and Sunday (0)
-                if (date.getDay() !== 0 && date.getDay() !== 6) {
-                    count++;
-                }
+<script>
+    // --- CONFIGURATION ---
+    // Best Way: Store rules here so you don't hunt through "if" statements later.
+    const APPOINTMENT_RULES = {
+        "therapy":  { cal: 14, bus: 10 },
+        "urgent":   { cal: 1,  bus: 0 },
+        "followup": { cal: 7,  bus: 5 },
+        "routine":  { cal: 0,  bus: 15 },
+        "posh":     { cal: 3,  bus: 0 }
+    };
+
+    // --- HELPER FUNCTIONS ---
+
+    // Fixes the "off by one day" timezone bug by forcing local time
+    function getLocalDate(dateString) {
+        if (!dateString) return null;
+        const parts = dateString.split('-');
+        return new Date(parts[0], parts[1] - 1, parts[2]); 
+    }
+
+    function addBusinessDays(date, days) {
+        let count = 0;
+        let resultDate = new Date(date); // Clone date so we don't change original
+        
+        while (count < days) {
+            resultDate.setDate(resultDate.getDate() + 1);
+            const dayOfWeek = resultDate.getDay();
+            // 0 is Sunday, 6 is Saturday
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+                count++;
             }
-            return date;
+        }
+        return resultDate;
+    }
+
+    function addCalendarDays(date, days) {
+        let resultDate = new Date(date);
+        resultDate.setDate(resultDate.getDate() + days);
+        return resultDate;
+    }
+
+    // --- MAIN LOGIC ---
+
+    function calculateDetails() {
+        // 1. Get Inputs
+        const startStr = document.getElementById("appointmentDate").value;
+        const offeredStr = document.getElementById("firstOfferedDate").value;
+        const type = document.getElementById("appointmentType").value;
+        const outcome = document.getElementById("outcome").value;
+
+        if (!startStr) {
+            alert("Please select a Request Date.");
+            return;
         }
 
-        function calculateDueDate() {
-            const appointmentDate = document.getElementById("appointmentDate").value;
-            const appointmentType = document.getElementById("appointmentType").value;
+        const startDate = getLocalDate(startStr);
+        const rule = APPOINTMENT_RULES[type];
+
+        // 2. Calculate Due Date based on Rules
+        let dueDate;
+        
+        // Logic: If business days are defined and > 0, use them. Otherwise use calendar.
+        // You can change this logic preference here if your rules change.
+        if (rule.bus > 0) {
+            dueDate = addBusinessDays(startDate, rule.bus);
+        } else {
+            dueDate = addCalendarDays(startDate, rule.cal);
+        }
+
+        // 3. Determine Compliance (Documentation Logic)
+        let statusMessage = "Pending";
+        let statusColor = "black";
+
+        if (offeredStr) {
+            const offeredDate = getLocalDate(offeredStr);
             
-            if (!appointmentDate) {
-                alert("Please select an appointment date.");
-                return;
-            }
-
-            let date = new Date(appointmentDate);
-            let calendarDays = 0;
-            let businessDays = 0;
-
-            switch (appointmentType) {
-                case "therapy":
-                    calendarDays = 14;
-                    businessDays = 10;
-                    break;
-                case "urgent":
-                    calendarDays = 1;
-                    break;
-                case "followup":
-                    calendarDays = 7;
-                    businessDays = 5;
-                    break;
-                case "routine":
-                    businessDays = 15;
-                    break;
-                case "posh":
-                    calendarDays = 3;
-                    break;
-            }
-
-            // Prioritize business days if defined
-            if (businessDays > 0) {
-                date = addBusinessDays(date, businessDays);
+            // Logic: Did we offer a date on or before the due date?
+            // OR did the member decline (which usually counts as compliant in many systems)
+            if (offeredDate <= dueDate || outcome === "declined") {
+                statusMessage = "✅ COMPLIANT - Target Met";
+                statusColor = "green";
             } else {
-                date.setDate(date.getDate() + calendarDays);
+                statusMessage = "❌ NON-COMPLIANT - Target Missed";
+                statusColor = "red";
             }
-
-            document.getElementById("dueDate").textContent = date.toDateString();
+        } else {
+            statusMessage = "⚠️ Please enter 'First Offered Date' to calculate compliance.";
+            statusColor = "#d9534f";
         }
-    </script>
+
+        // 4. Update UI
+        const options = { year: 'numeric', month: 'long', day: 'numeric' };
+        
+        document.getElementById("displayDueDate").textContent = dueDate.toLocaleDateString('en-US', options);
+        document.getElementById("displayOfferedDate").textContent = offeredStr ? getLocalDate(offeredStr).toLocaleDateString('en-US', options) : "Not Entered";
+        
+        const statusEl = document.getElementById("displayStatus");
+        statusEl.textContent = statusMessage;
+        statusEl.style.color = statusColor;
+        statusEl.style.fontWeight = "bold";
+
+        // Show results
+        document.getElementById("resultSection").classList.remove("hidden");
+    }
+</script>
+
 </body>
 </html>
