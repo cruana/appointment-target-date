@@ -3,69 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mental Health Team Calculator</title>
+    <title>Mental Health Target Date Calculator</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f4f4f9; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        label { display: block; margin-top: 15px; font-weight: bold; text-align: left; }
-        input, select { width: 100%; padding: 10px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px;}
-        button { margin-top: 20px; padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #218838; }
-        .result-box { margin-top: 20px; padding: 15px; background-color: #e9ecef; border-radius: 4px; text-align: left; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { color: #333; margin-bottom: 20px; }
+        label { display: block; margin-top: 15px; font-weight: 600; text-align: left; color: #555; }
+        input, select { width: 100%; padding: 12px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+        button { margin-top: 25px; width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 18px; font-weight: bold; transition: background 0.3s; }
+        button:hover { background-color: #0056b3; }
+        hr { margin: 25px 0; border: 0; border-top: 1px solid #eee; }
+        .result-box { margin-top: 25px; padding: 20px; background-color: #e9ecef; border-radius: 6px; text-align: left; border-left: 5px solid #007bff; }
         .hidden { display: none; }
+        .note { font-size: 0.85em; color: #666; margin-top: 5px; text-align: left; font-style: italic; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>Target & Due Date Calculator</h2>
+    <h2>Target Date Calculator</h2>
     
-    <label for="appointmentDate">Referral / Outreach / Contact Date:</label>
+    <label for="appointmentDate" id="dateLabel">Referral / Contact Date:</label>
     <input type="date" id="appointmentDate">
     
-    <label for="appointmentType">Appointment Type:</label>
-    <select id="appointmentType">
+    <label for="appointmentType">Appointment Category:</label>
+    <select id="appointmentType" onchange="updateLabel()">
         <option value="therapy">Intake / FIC Therapy (14 cal / 10 bus)</option>
+        <option value="consult">MD Consult / Intake (14 cal / 10 bus)</option>
         <option value="followup">Follow-Up (7 cal / 5 bus)</option>
-        <option value="routine">MD Routine (15 business days)</option>
-        <option value="urgent">Urgent (1 calendar day)</option>
-        <option value="posh">POSH (3 calendar days)</option>
+        <option value="routine">MD Routine (15 Business Days)</option>
+        <option value="urgent">Urgent / Crisis (1 Calendar Day)</option>
+        <option value="posh">POSH (3 Calendar Days)</option>
+        <option value="testing">Psych Testing (Patient Preference)</option>
+        <option value="class">Class (Patient Preference)</option>
     </select>
+    <div id="typeNote" class="note"></div>
     
     <hr>
 
-    <h3>Documentation</h3>
-    <label for="firstOfferedDate">First Offered Date:</label>
+    <h3>Compliance Documentation</h3>
+    <label for="firstOfferedDate">First Offered Appointment Date:</label>
     <input type="date" id="firstOfferedDate">
 
-    <label for="outcome">Outcome:</label>
+    <label for="outcome">Outcome / Scenario:</label>
     <select id="outcome">
         <option value="met">Target Date Met</option>
-        <option value="declined">Member Declined First Offer</option>
-        <option value="unavailable">Provider Unavailable</option>
+        <option value="declined">Member Declined First Offer (Compliant)</option>
+        <option value="unavailable">Provider Unavailable (Non-Compliant)</option>
         <option value="no_show">Member No Show / Cancellation</option>
     </select>
     
-    <button onclick="calculateDetails()">Calculate & Document</button>
+    <button onclick="calculateDetails()">Calculate Status</button>
     
     <div id="resultSection" class="result-box hidden">
         <p><strong>Target Due Date:</strong> <span id="displayDueDate"></span></p>
         <p><strong>First Offered:</strong> <span id="displayOfferedDate"></span></p>
-        <p><strong>Compliance Status:</strong> <span id="displayStatus"></span></p>
+        <p><strong>Status:</strong> <span id="displayStatus"></span></p>
     </div>
 </div>
 
 <script>
-    
+    // RULES based on the PDF Guidelines
     const APPOINTMENT_RULES = {
-        "therapy":  { cal: 14, bus: 10 },
-        "urgent":   { cal: 1,  bus: 0 },
-        "followup": { cal: 7,  bus: 5 },
-        "routine":  { cal: 15, bus: 0 },
-        "posh":     { cal: 3,  bus: 0 }
+        "therapy":  { cal: 14, bus: 10, note: "Standard: 14 Calendar or 10 Business days" },
+        "consult":  { cal: 14, bus: 10, note: "Standard: 14 Calendar or 10 Business days" },
+        "urgent":   { cal: 1,  bus: 0,  note: "Urgent: 1 Calendar Day" },
+        "followup": { cal: 7,  bus: 5,  note: "Follow-Up: 7 Calendar or 5 Business days" },
+        "routine":  { cal: 0,  bus: 15, note: "Routine: 15 Business Days" }, // FIXED: Now uses business days
+        "posh":     { cal: 3,  bus: 0,  note: "POSH: 3 Calendar Days from Discharge" },
+        "testing":  { cal: 0,  bus: 0,  note: "Target: Date patient wants to be seen" },
+        "class":    { cal: 0,  bus: 0,  note: "Target: Date specific by provider or patient" }
     };
 
- 
+    function updateLabel() {
+        const type = document.getElementById("appointmentType").value;
+        const label = document.getElementById("dateLabel");
+        const note = document.getElementById("typeNote");
+        
+        // Update the helper note
+        note.textContent = APPOINTMENT_RULES[type].note;
+
+        // Change label for POSH specific logic
+        if (type === "posh") {
+            label.textContent = "Hospital Discharge Date:";
+        } else {
+            label.textContent = "Referral / Contact / Request Date:";
+        }
+    }
+
     function getLocalDate(dateString) {
         if (!dateString) return null;
         const parts = dateString.split('-');
@@ -79,8 +104,7 @@
         while (count < days) {
             resultDate.setDate(resultDate.getDate() + 1);
             const dayOfWeek = resultDate.getDay();
-            
-            if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+            if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Sun(0) and Sat(6)
                 count++;
             }
         }
@@ -93,27 +117,29 @@
         return resultDate;
     }
 
- 
-
     function calculateDetails() {
-        
         const startStr = document.getElementById("appointmentDate").value;
         const offeredStr = document.getElementById("firstOfferedDate").value;
         const type = document.getElementById("appointmentType").value;
         const outcome = document.getElementById("outcome").value;
 
         if (!startStr) {
-            alert("Please select a Request Date.");
+            alert("Please select the Start Date.");
             return;
         }
 
         const startDate = getLocalDate(startStr);
         const rule = APPOINTMENT_RULES[type];
-
         let dueDate;
-        
-    
-        if (rule.bus > 0) {
+
+        // Logic for "Patient Preference" types (Class/Testing)
+        if (rule.cal === 0 && rule.bus === 0) {
+            // If no specific days are set, the target is technically the requested date.
+            // For calculation purposes, we can default to the Start Date or handle specifically.
+            dueDate = startDate; 
+        } 
+        // Logic for Business vs Calendar days
+        else if (rule.bus > 0) {
             dueDate = addBusinessDays(startDate, rule.bus);
         } else {
             dueDate = addCalendarDays(startDate, rule.cal);
@@ -125,20 +151,26 @@
         if (offeredStr) {
             const offeredDate = getLocalDate(offeredStr);
 
+            // COMPLIANCE LOGIC:
+            // 1. If offered date is on or before due date -> Compliant
+            // 2. If member declined the first offer -> Compliant (Access met)
+            // 3. Special case for Testing/Class: If offered date matches request (logic simplified here)
+            
             if (offeredDate <= dueDate || outcome === "declined") {
-                statusMessage = "✅ COMPLIANT - Target Date Met";
+                statusMessage = "✅ COMPLIANT - Target Met";
                 statusColor = "green";
             } else {
-                statusMessage = "❌ NON-COMPLIANT - Target Date Missed";
-                statusColor = "red";
+                statusMessage = "❌ NON-COMPLIANT - Target Missed";
+                statusColor = "#d9534f"; // Red
             }
         } else {
-            statusMessage = "⚠️ Please enter 'First Offered Date' to calculate compliance.";
-            statusColor = "#d9534f";
+            statusMessage = "⚠️ Waiting for 'First Offered Date'...";
+            statusColor = "#f0ad4e"; // Orange
         }
 
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         
+        // Update UI
         document.getElementById("displayDueDate").textContent = dueDate.toLocaleDateString('en-US', options);
         document.getElementById("displayOfferedDate").textContent = offeredStr ? getLocalDate(offeredStr).toLocaleDateString('en-US', options) : "Not Entered";
         
@@ -149,6 +181,9 @@
 
         document.getElementById("resultSection").classList.remove("hidden");
     }
+
+    // Initialize labels on load
+    updateLabel();
 </script>
 
 </body>
