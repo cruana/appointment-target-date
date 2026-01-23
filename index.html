@@ -39,6 +39,9 @@
         /* STATUS FLAGS */
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
+        /* New Status for EPN Save */
+        .status-warn { color: #e67e22; font-weight: bold; font-size: 1.2em; } 
+        
         .escalation-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
         .info-note { color: #0070e0; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
         .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
@@ -116,7 +119,7 @@
                 <option value="accepted">Offered & ACCEPTED</option>
                 <option value="declined">Offered & DECLINED</option>
             </select>
-            <div class="helper-text">Rula, Lucet, or other external partners.</div>
+            <div class="helper-text">Rula, Lucet, or other In-Network partners.</div>
         </div>
 
         <div style="margin-top: 20px; text-align: center;">
@@ -140,7 +143,6 @@
 
     let calculatedTargetDate = null;
 
-    // --- RESET FUNCTION ---
     function resetForm() {
         document.getElementById("callType").selectedIndex = 0;
         document.getElementById("apptType").selectedIndex = 0;
@@ -151,7 +153,7 @@
         document.getElementById("epnStatus").selectedIndex = 0;
 
         calculatedTargetDate = null;
-        handleScenarioChange(); // Resets views
+        handleScenarioChange();
         
         document.getElementById("resultArea").style.display = "none";
         document.getElementById("step4b_container").classList.add("hidden");
@@ -211,9 +213,7 @@
         return result;
     }
 
-    // --- PROGRESSIVE DISCLOSURE ---
     function revealStep4b() {
-        // Show Reason (4b) and EPN (5) once date is picked
         document.getElementById("step4b_container").classList.remove("hidden");
         document.getElementById("step5_container").classList.remove("hidden");
         checkCompliance();
@@ -257,7 +257,6 @@
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
         const resetEl = document.getElementById("resetNote");
 
-        // Past Due Logic
         if (calculatedTargetDate < today) {
             calculatedTargetDate = today;
             resetEl.innerHTML = `⚠️ Original target <strong>(${originalTargetDate.toLocaleDateString('en-US')})</strong> passed.<br>Target reset to Today per 'Soonest Available' protocol.`;
@@ -270,7 +269,7 @@
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
-        // Soft reset results
+        // Soft reset
         document.getElementById("offeredDate").value = "";
         document.getElementById("outcomeReason").selectedIndex = 0;
         document.getElementById("epnStatus").selectedIndex = 0;
@@ -285,8 +284,8 @@
 
     function checkCompliance() {
         const offeredStr = document.getElementById("offeredDate").value;
-        const outcomeReason = document.getElementById("outcomeReason").value;
         const epnStatus = document.getElementById("epnStatus").value;
+        const outcomeReason = document.getElementById("outcomeReason").value;
         
         const statusEl = document.getElementById("finalStatus");
         const actionEl = document.getElementById("actionItem");
@@ -297,8 +296,8 @@
         warningEl.classList.add("hidden");
         warningEl.textContent = "";
 
-        // Check if Internal date was offered
-        let isDateLate = false;
+        // Internal Logic Variables
+        let isInternalLate = false;
         let internalDateProvided = false;
 
         if (offeredStr && calculatedTargetDate) {
@@ -306,55 +305,65 @@
             const parts = offeredStr.split('-');
             const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
             if (offeredDate > calculatedTargetDate) {
-                isDateLate = true;
+                isInternalLate = true;
             }
         }
 
-        // --- COMPLIANCE HIERARCHY ---
+        // --- COMPLIANCE LOGIC HIERARCHY ---
 
-        // 1. If EPN is ACCEPTED -> Always Compliant (Overrides internal failure)
+        // 1. EPN ACCEPTED -> Compliant (Regardless of internal date)
         if (epnStatus === "accepted") {
-            statusEl.textContent = "✅ COMPLIANT (EPN Accepted)";
-            statusEl.className = "status-pass";
-            actionEl.textContent = "Patient accepted In-Network care. Access standard met.";
-            
-            // Add a friendly warning if internal date was late (for auditing)
-            if (internalDateProvided && isDateLate) {
-                warningEl.textContent = "ℹ️ Note: Internal appointment was past target, but EPN satisfied the request.";
+            if (isInternalLate) {
+                // SPECIAL STATUS: Green but specific
+                statusEl.textContent = "✅ COMPLIANT via EPN (Internal Target Missed)";
+                statusEl.className = "status-warn"; // Orange/Yellow to indicate mixed result
+                actionEl.textContent = "Access met via In-Network Provider. No escalation needed.";
+                warningEl.textContent = "Note: Internal appointment was unavailable/late, but EPN saved compliance.";
                 warningEl.classList.remove("hidden");
+            } else {
+                statusEl.textContent = "✅ COMPLIANT (EPN Accepted)";
+                statusEl.className = "status-pass";
+                actionEl.textContent = "Patient accepted In-Network care. Access standard met.";
             }
             return;
         }
 
-        // 2. If EPN NOT Accepted (None or Declined), evaluate Internal Date
+        // 2. INTERNAL CHECK (If EPN was NOT accepted)
         if (internalDateProvided) {
-            // A. Date is Good
-            if (!isDateLate) {
+            
+            // A. Internal Date is Good
+            if (!isInternalLate) {
                 statusEl.textContent = "✅ COMPLIANT (Target Met)";
                 statusEl.className = "status-pass";
                 actionEl.textContent = "Internal appointment offered within timeframe.";
                 return;
             }
 
-            // B. Date is Late, but Member Declined earlier
+            // B. Internal Date Late, but Patient Declined earlier
             if (outcomeReason === "patient_declined") {
                 statusEl.textContent = "✅ COMPLIANT (Member Declined)";
                 statusEl.className = "status-pass";
-                actionEl.textContent = "Access met, but member chose later date.";
+                actionEl.textContent = "Access met, but member chose later date. Document 'RLD'.";
                 return;
             }
 
-            // C. Date is Late & Provider Unavailable (FAIL)
+            // C. FAIL STATE (Late Date + Provider Unavailable + EPN Not Accepted)
             statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
             statusEl.className = "status-fail";
             escalationEl.classList.remove("hidden");
             
-            actionEl.textContent = "Initiate Escalation Protocol. Conduct warm hand off to local administrator for scheduling within access.";
+            if (epnStatus === "declined") {
+                actionEl.textContent = "Member declined In-Network option & no internal appt available.";
+            } else {
+                actionEl.textContent = "No appointments available.";
+            }
+            // Add instruction to escalation banner
+            escalationEl.textContent = "⚠️ ESCALATION PROTOCOL REQUIRED: Warm Transfer to Local Admin";
         } else {
-            // No Date Entered yet
+            // Waiting for date
             statusEl.textContent = "PENDING INPUT";
             statusEl.className = "status-fail";
-            actionEl.textContent = "Please enter the offered date to verify compliance.";
+            actionEl.textContent = "Please enter the offered date.";
         }
     }
 </script>
