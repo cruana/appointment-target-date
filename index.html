@@ -10,12 +10,10 @@
         
         .card { background: var(--card); width: 100%; max-width: 600px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
-        /* HEADER LAYOUT */
+        /* HEADER */
         .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; margin-bottom: 25px; padding-bottom: 10px; }
         h2 { margin: 0; color: var(--primary); font-size: 1.5em; }
-        
-        /* RESET BUTTON STYLE */
-        .reset-btn { background-color: #f1f3f4; color: #333; border: 1px solid #dadce0; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.2s; font-weight: 600; width: auto; margin: 0; }
+        .reset-btn { background-color: #f1f3f4; color: #333; border: 1px solid #dadce0; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.2s; font-weight: 600; }
         .reset-btn:hover { background-color: #e8eaed; border-color: #333; }
 
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.95em; color: #555; }
@@ -98,26 +96,27 @@
         
         <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
-        <label>4. EPN / External Network (Rula/Lucet):</label>
-        <select id="epnStatus" onchange="revealStep5()">
-            <option value="" disabled selected>-- Select Status --</option>
-            <option value="none">Not Offered / Not Applicable</option>
-            <option value="accepted">Offered & ACCEPTED</option>
-            <option value="declined">Offered & DECLINED</option>
-        </select>
+        <label>4. First Offered Appointment Date (Internal):</label>
+        <input type="date" id="offeredDate" onchange="revealStep4b()" onclick="try{this.showPicker()}catch(e){}">
 
-        <div id="step5_container" class="hidden">
-            <label>5. First Offered Appointment Date:</label>
-            <input type="date" id="offeredDate" onchange="revealStep6()" onclick="try{this.showPicker()}catch(e){}">
-        </div>
-
-        <div id="step6_container" class="hidden">
+        <div id="step4b_container" class="hidden">
             <label>Reason for Date (If Late):</label>
             <select id="outcomeReason" onchange="checkCompliance()">
                 <option value="met">Date is within Target</option>
                 <option value="patient_declined">Member Declined Earlier Dates (Access Met)</option>
                 <option value="provider_unavailable">No Appointments Available (Access Missed)</option>
             </select>
+        </div>
+
+        <div id="step5_container" class="hidden">
+            <label>5. EPN / In-Network Providers:</label>
+            <select id="epnStatus" onchange="checkCompliance()">
+                <option value="" disabled selected>-- Select Status --</option>
+                <option value="none">Not Offered / Not Applicable</option>
+                <option value="accepted">Offered & ACCEPTED</option>
+                <option value="declined">Offered & DECLINED</option>
+            </select>
+            <div class="helper-text">Rula, Lucet, or other external partners.</div>
         </div>
 
         <div style="margin-top: 20px; text-align: center;">
@@ -143,26 +142,21 @@
 
     // --- RESET FUNCTION ---
     function resetForm() {
-        // Reset Inputs
         document.getElementById("callType").selectedIndex = 0;
         document.getElementById("apptType").selectedIndex = 0;
         document.getElementById("startDate").value = "";
-        document.getElementById("epnStatus").selectedIndex = 0;
+        
         document.getElementById("offeredDate").value = "";
         document.getElementById("outcomeReason").selectedIndex = 0;
+        document.getElementById("epnStatus").selectedIndex = 0;
 
-        // Reset Variables
         calculatedTargetDate = null;
-
-        // Reset View via Scenario Handler
-        handleScenarioChange();
-
-        // Ensure Results are hidden
-        document.getElementById("resultArea").style.display = "none";
-        document.getElementById("step5_container").classList.add("hidden");
-        document.getElementById("step6_container").classList.add("hidden");
+        handleScenarioChange(); // Resets views
         
-        // Reset Text
+        document.getElementById("resultArea").style.display = "none";
+        document.getElementById("step4b_container").classList.add("hidden");
+        document.getElementById("step5_container").classList.add("hidden");
+        
         document.getElementById("resetNote").classList.add("hidden");
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail";
@@ -182,7 +176,6 @@
         } else if (scenario === "cancel" && apptType === "posh") {
             document.getElementById("poshCancelAlert").style.display = "block";
         } else if (scenario) {
-            // Only show inputs if a valid scenario is selected
             document.getElementById("mainInputs").classList.remove("hidden");
             updateLabels();
         }
@@ -218,13 +211,11 @@
         return result;
     }
 
-    function revealStep5() {
+    // --- PROGRESSIVE DISCLOSURE ---
+    function revealStep4b() {
+        // Show Reason (4b) and EPN (5) once date is picked
+        document.getElementById("step4b_container").classList.remove("hidden");
         document.getElementById("step5_container").classList.remove("hidden");
-        checkCompliance();
-    }
-
-    function revealStep6() {
-        document.getElementById("step6_container").classList.remove("hidden");
         checkCompliance();
     }
 
@@ -266,6 +257,7 @@
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
         const resetEl = document.getElementById("resetNote");
 
+        // Past Due Logic
         if (calculatedTargetDate < today) {
             calculatedTargetDate = today;
             resetEl.innerHTML = `⚠️ Original target <strong>(${originalTargetDate.toLocaleDateString('en-US')})</strong> passed.<br>Target reset to Today per 'Soonest Available' protocol.`;
@@ -278,12 +270,12 @@
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
-        // Soft reset for results area
-        document.getElementById("epnStatus").selectedIndex = 0;
+        // Soft reset results
         document.getElementById("offeredDate").value = "";
         document.getElementById("outcomeReason").selectedIndex = 0;
+        document.getElementById("epnStatus").selectedIndex = 0;
+        document.getElementById("step4b_container").classList.add("hidden");
         document.getElementById("step5_container").classList.add("hidden");
-        document.getElementById("step6_container").classList.add("hidden");
 
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
@@ -293,8 +285,8 @@
 
     function checkCompliance() {
         const offeredStr = document.getElementById("offeredDate").value;
-        const epnStatus = document.getElementById("epnStatus").value;
         const outcomeReason = document.getElementById("outcomeReason").value;
+        const epnStatus = document.getElementById("epnStatus").value;
         
         const statusEl = document.getElementById("finalStatus");
         const actionEl = document.getElementById("actionItem");
@@ -305,10 +297,12 @@
         warningEl.classList.add("hidden");
         warningEl.textContent = "";
 
-        if (!epnStatus) return;
-
+        // Check if Internal date was offered
         let isDateLate = false;
+        let internalDateProvided = false;
+
         if (offeredStr && calculatedTargetDate) {
+            internalDateProvided = true;
             const parts = offeredStr.split('-');
             const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
             if (offeredDate > calculatedTargetDate) {
@@ -316,19 +310,25 @@
             }
         }
 
+        // --- COMPLIANCE HIERARCHY ---
+
+        // 1. If EPN is ACCEPTED -> Always Compliant (Overrides internal failure)
         if (epnStatus === "accepted") {
             statusEl.textContent = "✅ COMPLIANT (EPN Accepted)";
             statusEl.className = "status-pass";
-            actionEl.textContent = "Patient accepted external care. Access standard met.";
+            actionEl.textContent = "Patient accepted In-Network care. Access standard met.";
             
-            if (isDateLate) {
-                warningEl.textContent = "⚠️ Note: The offered appointment date is past the target.";
+            // Add a friendly warning if internal date was late (for auditing)
+            if (internalDateProvided && isDateLate) {
+                warningEl.textContent = "ℹ️ Note: Internal appointment was past target, but EPN satisfied the request.";
                 warningEl.classList.remove("hidden");
             }
             return;
         }
 
-        if (offeredStr && calculatedTargetDate) {
+        // 2. If EPN NOT Accepted (None or Declined), evaluate Internal Date
+        if (internalDateProvided) {
+            // A. Date is Good
             if (!isDateLate) {
                 statusEl.textContent = "✅ COMPLIANT (Target Met)";
                 statusEl.className = "status-pass";
@@ -336,6 +336,7 @@
                 return;
             }
 
+            // B. Date is Late, but Member Declined earlier
             if (outcomeReason === "patient_declined") {
                 statusEl.textContent = "✅ COMPLIANT (Member Declined)";
                 statusEl.className = "status-pass";
@@ -343,12 +344,14 @@
                 return;
             }
 
+            // C. Date is Late & Provider Unavailable (FAIL)
             statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
             statusEl.className = "status-fail";
             escalationEl.classList.remove("hidden");
             
             actionEl.textContent = "Initiate Escalation Protocol. Conduct warm hand off to local administrator for scheduling within access.";
         } else {
+            // No Date Entered yet
             statusEl.textContent = "PENDING INPUT";
             statusEl.className = "status-fail";
             actionEl.textContent = "Please enter the offered date to verify compliance.";
