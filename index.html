@@ -8,7 +8,7 @@
         :root { --primary: #0070e0; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
         
-        .card { background: var(--card); width: 100%; max-width: 600px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .card { background: var(--card); width: 100%; max-width: 650px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
         
         /* HEADER */
         .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; margin-bottom: 25px; padding-bottom: 10px; }
@@ -39,12 +39,16 @@
         /* STATUS FLAGS */
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
-        /* New Status for EPN Save */
         .status-warn { color: #e67e22; font-weight: bold; font-size: 1.2em; } 
         
         .escalation-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
         .info-note { color: #0070e0; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
         .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
+
+        /* POOL INFO BOX */
+        .pool-box { margin-top: 15px; padding: 12px; background-color: #fff; border: 1px solid #cfe2f3; border-radius: 6px; font-size: 0.95em; }
+        .pool-label { font-weight: bold; color: #555; }
+        .pool-number { font-family: monospace; font-size: 1.1em; color: #333; background: #eee; padding: 2px 6px; border-radius: 4px; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -75,7 +79,17 @@
     </div>
 
     <div id="mainInputs" class="hidden">
-        <label for="apptType">2. Appointment Category:</label>
+        <label for="homeClinic">2. Patient's Home Clinic:</label>
+        <select id="homeClinic" onchange="updatePoolInfo()">
+            <option value="" disabled selected>-- Select Clinic --</option>
+            <option value="vista">Vista (VIS)</option>
+            <option value="rb">Rancho Bernardo (RB)</option>
+            <option value="plo">Point Loma (PLO)</option>
+            <option value="bos">Bostonia (BOS)</option>
+            <option value="otm">Otay Mesa (OTM)</option>
+        </select>
+
+        <label for="apptType">3. Appointment Category:</label>
         <select id="apptType" onchange="updateLabels()">
             <option value="therapy">Intake / FIC Therapy</option>
             <option value="consult">MD Consult / Intake</option>
@@ -86,7 +100,7 @@
         </select>
         <div id="ruleText" class="helper-text">Standard: 14 Calendar or 10 Business days</div>
 
-        <label id="dateLabel" for="startDate">3. Referral / Contact Date:</label>
+        <label id="dateLabel" for="startDate">4. Referral / Contact Date:</label>
         <input type="date" id="startDate" onclick="try{this.showPicker()}catch(e){}">
 
         <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
@@ -99,7 +113,7 @@
         
         <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
-        <label>4. First Offered Appointment Date (Internal):</label>
+        <label>5. First Offered Appointment Date (Internal):</label>
         <input type="date" id="offeredDate" onchange="revealStep4b()" onclick="try{this.showPicker()}catch(e){}">
 
         <div id="step4b_container" class="hidden">
@@ -112,7 +126,7 @@
         </div>
 
         <div id="step5_container" class="hidden">
-            <label>5. EPN / In-Network Providers:</label>
+            <label>6. EPN / In-Network Providers:</label>
             <select id="epnStatus" onchange="checkCompliance()">
                 <option value="" disabled selected>-- Select Status --</option>
                 <option value="none">Not Offered / Not Applicable</option>
@@ -125,13 +139,25 @@
         <div style="margin-top: 20px; text-align: center;">
             <div id="finalStatus" class="status-fail">PENDING INPUT</div>
             <div id="dateWarning" class="date-warning hidden"></div>
-            <div id="escalationWarning" class="escalation-flag hidden">⚠️ ESCALATION PROTOCOL REQUIRED</div>
+            
+            <div id="escalationWarning" class="escalation-flag hidden">
+                ⚠️ ESCALATION PROTOCOL REQUIRED
+                <div style="font-weight: normal; margin-top:5px; font-size: 0.9em;">Conduct Warm Hand-off to Local Admin</div>
+            </div>
+            
             <div id="actionItem" class="helper-text"></div>
+
+            <div id="poolDisplay" class="pool-box hidden">
+                <div style="margin-bottom: 4px;">📍 <span id="poolClinicName"></span> Routing:</div>
+                <div><span class="pool-label">Escalation (Mgr/ADA):</span> <span id="poolMgr" class="pool-number"></span></div>
+                <div><span class="pool-label">Waitlist/Clerk:</span> <span id="poolClerk" class="pool-number"></span></div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
+    // --- DATA: RULES & POOLS ---
     const RULES = {
         "therapy":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
         "consult":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
@@ -141,10 +167,21 @@
         "urgent":   { cal: 1,  bus: 0,  note: "1 Calendar Day" }
     };
 
+    // POOL DATA sourced from PDF Pages 63 & 31
+    const POOLS = {
+        "vista": { name: "Vista", mgr: "124531", clerk: "10210" },
+        "rb":    { name: "Rancho Bernardo", mgr: "124535", clerk: "18574" },
+        "plo":   { name: "Point Loma", mgr: "124536", clerk: "10241" },
+        "bos":   { name: "Bostonia", mgr: "124532", clerk: "10629" },
+        "otm":   { name: "Otay Mesa", mgr: "124528", clerk: "10427" }
+    };
+
     let calculatedTargetDate = null;
 
+    // --- RESET FUNCTION ---
     function resetForm() {
         document.getElementById("callType").selectedIndex = 0;
+        document.getElementById("homeClinic").selectedIndex = 0;
         document.getElementById("apptType").selectedIndex = 0;
         document.getElementById("startDate").value = "";
         
@@ -158,6 +195,7 @@
         document.getElementById("resultArea").style.display = "none";
         document.getElementById("step4b_container").classList.add("hidden");
         document.getElementById("step5_container").classList.add("hidden");
+        document.getElementById("poolDisplay").classList.add("hidden");
         
         document.getElementById("resetNote").classList.add("hidden");
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
@@ -275,11 +313,28 @@
         document.getElementById("epnStatus").selectedIndex = 0;
         document.getElementById("step4b_container").classList.add("hidden");
         document.getElementById("step5_container").classList.add("hidden");
+        document.getElementById("poolDisplay").classList.add("hidden");
 
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
         
         checkCompliance();
+    }
+
+    function updatePoolInfo(show = false) {
+        const clinicKey = document.getElementById("homeClinic").value;
+        const poolEl = document.getElementById("poolDisplay");
+        
+        if (!clinicKey || !show) {
+            poolEl.classList.add("hidden");
+            return;
+        }
+
+        const data = POOLS[clinicKey];
+        document.getElementById("poolClinicName").textContent = data.name;
+        document.getElementById("poolMgr").textContent = data.mgr;
+        document.getElementById("poolClerk").textContent = data.clerk;
+        poolEl.classList.remove("hidden");
     }
 
     function checkCompliance() {
@@ -294,9 +349,10 @@
 
         escalationEl.classList.add("hidden");
         warningEl.classList.add("hidden");
+        updatePoolInfo(false); // Hide pool info by default
         warningEl.textContent = "";
 
-        // Internal Logic Variables
+        // Check Internal Date
         let isInternalLate = false;
         let internalDateProvided = false;
 
@@ -309,14 +365,13 @@
             }
         }
 
-        // --- COMPLIANCE LOGIC HIERARCHY ---
+        // --- COMPLIANCE LOGIC ---
 
-        // 1. EPN ACCEPTED -> Compliant (Regardless of internal date)
+        // 1. EPN ACCEPTED -> Compliant (Internal Late? Warn Only)
         if (epnStatus === "accepted") {
             if (isInternalLate) {
-                // SPECIAL STATUS: Green but specific
                 statusEl.textContent = "✅ COMPLIANT via EPN (Internal Target Missed)";
-                statusEl.className = "status-warn"; // Orange/Yellow to indicate mixed result
+                statusEl.className = "status-warn";
                 actionEl.textContent = "Access met via In-Network Provider. No escalation needed.";
                 warningEl.textContent = "Note: Internal appointment was unavailable/late, but EPN saved compliance.";
                 warningEl.classList.remove("hidden");
@@ -328,10 +383,9 @@
             return;
         }
 
-        // 2. INTERNAL CHECK (If EPN was NOT accepted)
+        // 2. INTERNAL CHECK
         if (internalDateProvided) {
-            
-            // A. Internal Date is Good
+            // A. Good Date
             if (!isInternalLate) {
                 statusEl.textContent = "✅ COMPLIANT (Target Met)";
                 statusEl.className = "status-pass";
@@ -339,7 +393,7 @@
                 return;
             }
 
-            // B. Internal Date Late, but Patient Declined earlier
+            // B. Late Date + Patient Declined Earlier
             if (outcomeReason === "patient_declined") {
                 statusEl.textContent = "✅ COMPLIANT (Member Declined)";
                 statusEl.className = "status-pass";
@@ -347,20 +401,20 @@
                 return;
             }
 
-            // C. FAIL STATE (Late Date + Provider Unavailable + EPN Not Accepted)
+            // C. FAIL STATE (Late Date + Provider Unavailable)
             statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
             statusEl.className = "status-fail";
             escalationEl.classList.remove("hidden");
+            
+            // Show Routing Info automatically if failed
+            updatePoolInfo(true);
             
             if (epnStatus === "declined") {
                 actionEl.textContent = "Member declined In-Network option & no internal appt available.";
             } else {
                 actionEl.textContent = "No appointments available.";
             }
-            // Add instruction to escalation banner
-            escalationEl.textContent = "⚠️ ESCALATION PROTOCOL REQUIRED: Warm Transfer to Local Admin";
         } else {
-            // Waiting for date
             statusEl.textContent = "PENDING INPUT";
             statusEl.className = "status-fail";
             actionEl.textContent = "Please enter the offered date.";
