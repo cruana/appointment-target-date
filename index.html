@@ -12,10 +12,10 @@
         h2 { margin-top: 0; color: var(--primary); text-align: center; border-bottom: 2px solid #f0f0f0; padding-bottom: 15px; margin-bottom: 25px; }
         
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.95em; color: #555; }
-        
-        /* UPDATED: Added cursor pointer for date inputs */
         select, input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; transition: border 0.2s; box-sizing: border-box;}
         select:focus, input:focus { border-color: var(--primary); outline: none; background-color: #fff; }
+        
+        /* Clickable Date Inputs */
         input[type="date"] { cursor: pointer; } 
 
         button { width: 100%; margin-top: 25px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
@@ -31,6 +31,8 @@
         
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
+        .sb855-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
+        .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
     </style>
 </head>
 <body>
@@ -80,24 +82,33 @@
         <div id="calcMethod" class="helper-text" style="margin-bottom: 10px;"></div>
         <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
-        <label>4. Compliance Check:</label>
-        <div style="margin-bottom:10px;">
-            <input type="checkbox" id="epnCheck" onchange="checkCompliance()" style="width:auto;"> 
-            <span style="font-weight:bold; color:#0070e0;">Was EPN / Rula / Lucet offered?</span>
-        </div>
+        <label>4. EPN / External Network (Rula/Lucet):</label>
+        <select id="epnStatus" onchange="checkCompliance()">
+            <option value="none">Not Offered / Not Applicable</option>
+            <option value="accepted">Offered & ACCEPTED</option>
+            <option value="declined">Offered & DECLINED</option>
+        </select>
 
-        <label>First Offered Appointment Date:</label>
+        <label>5. First Offered Appointment Date:</label>
         <input type="date" id="offeredDate" onchange="checkCompliance()" onclick="try{this.showPicker()}catch(e){}">
+
+        <label>Reason for Date (If Late):</label>
+        <select id="outcomeReason" onchange="checkCompliance()">
+            <option value="met">Date is within Target</option>
+            <option value="patient_declined">Member Declined Earlier Dates (Access Met)</option>
+            <option value="provider_unavailable">No Appointments Available (Access Missed)</option>
+        </select>
 
         <div style="margin-top: 20px; text-align: center;">
             <div id="finalStatus" class="status-fail">PENDING INPUT</div>
+            <div id="dateWarning" class="date-warning hidden"></div>
+            <div id="sb855Warning" class="sb855-flag hidden">⚠️ SB-855 LETTER REQUIRED</div>
             <div id="actionItem" class="helper-text"></div>
         </div>
     </div>
 </div>
 
 <script>
-    // --- RULES CONFIGURATION ---
     const RULES = {
         "therapy":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
         "consult":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
@@ -109,18 +120,15 @@
 
     let calculatedTargetDate = null;
 
-    // --- VIEW CONTROLLER ---
     function handleScenarioChange() {
         const scenario = document.getElementById("callType").value;
         const apptType = document.getElementById("apptType").value;
         
-        // 1. Hide everything first
         document.getElementById("crisisAlert").style.display = "none";
         document.getElementById("poshCancelAlert").style.display = "none";
         document.getElementById("mainInputs").classList.add("hidden");
         document.getElementById("resultArea").style.display = "none";
 
-        // 2. Show relevant section
         if (scenario === "crisis") {
             document.getElementById("crisisAlert").style.display = "block";
         } else if (scenario === "cancel" && apptType === "posh") {
@@ -145,15 +153,12 @@
         }
     }
 
-    // --- DATE HELPERS ---
     function addBusinessDays(date, days) {
         let result = new Date(date);
         let added = 0;
         while (added < days) {
             result.setDate(result.getDate() + 1);
-            if (result.getDay() !== 0 && result.getDay() !== 6) {
-                added++;
-            }
+            if (result.getDay() !== 0 && result.getDay() !== 6) added++;
         }
         return result;
     }
@@ -164,7 +169,6 @@
         return result;
     }
 
-    // --- MAIN CALCULATION ---
     function calculateTarget() {
         const startStr = document.getElementById("startDate").value;
         const type = document.getElementById("apptType").value;
@@ -175,12 +179,10 @@
         const parts = startStr.split('-');
         const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
         
-        // SAFETY CHECK: Future Date Warning
         const today = new Date();
         today.setHours(0,0,0,0);
         if (startDate > today && type !== "posh") {
-            const confirmFuture = confirm("⚠️ WARNING: You selected a future date.\n\nIs this correct? (Usually 'Contact Date' is today or in the past).");
-            if (!confirmFuture) return; 
+            if (!confirm("⚠️ WARNING: Future date selected. Is this correct?")) return; 
         }
 
         const rule = RULES[type];
@@ -203,39 +205,77 @@
         document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
-        
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
-        document.getElementById("actionItem").textContent = "Enter an offered date or select EPN to verify compliance.";
         
         checkCompliance();
     }
 
     function checkCompliance() {
         const offeredStr = document.getElementById("offeredDate").value;
-        const isEpn = document.getElementById("epnCheck").checked;
+        const epnStatus = document.getElementById("epnStatus").value;
+        const outcomeReason = document.getElementById("outcomeReason").value;
+        
         const statusEl = document.getElementById("finalStatus");
         const actionEl = document.getElementById("actionItem");
+        const sb855El = document.getElementById("sb855Warning");
+        const warningEl = document.getElementById("dateWarning");
 
-        if (isEpn) {
-            statusEl.textContent = "✅ COMPLIANT (EPN Offered)";
-            statusEl.className = "status-pass";
-            actionEl.textContent = "Offering external network (Rula/Lucet) satisfies access standards.";
-            return;
-        }
+        sb855El.classList.add("hidden");
+        warningEl.classList.add("hidden");
+        warningEl.textContent = "";
 
+        // Check if an internal date was entered and if it is late
+        let isDateLate = false;
         if (offeredStr && calculatedTargetDate) {
             const parts = offeredStr.split('-');
             const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
+            if (offeredDate > calculatedTargetDate) {
+                isDateLate = true;
+            }
+        }
 
-            if (offeredDate <= calculatedTargetDate) {
+        // --- COMPLIANCE LOGIC ---
+
+        // 1. EPN ACCEPTED
+        if (epnStatus === "accepted") {
+            statusEl.textContent = "✅ COMPLIANT (EPN Accepted)";
+            statusEl.className = "status-pass";
+            actionEl.textContent = "Patient accepted external care. Access standard met.";
+            
+            // NEW: Cross-Reference Warning
+            if (isDateLate) {
+                warningEl.textContent = "⚠️ Note: The offered appointment date is past the target.";
+                warningEl.classList.remove("hidden");
+            }
+            return;
+        }
+
+        // 2. INTERNAL CHECK
+        if (offeredStr && calculatedTargetDate) {
+            if (!isDateLate) {
                 statusEl.textContent = "✅ COMPLIANT (Target Met)";
                 statusEl.className = "status-pass";
-                actionEl.textContent = "Great job! The offered date is within the required timeframe.";
+                actionEl.textContent = "Internal appointment offered within timeframe.";
+                return;
+            }
+
+            if (outcomeReason === "patient_declined") {
+                statusEl.textContent = "✅ COMPLIANT (Member Declined)";
+                statusEl.className = "status-pass";
+                actionEl.textContent = "Access met, but member chose later date.";
+                return;
+            }
+
+            // FAIL STATE
+            statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
+            statusEl.className = "status-fail";
+            sb855El.classList.remove("hidden");
+            
+            if (epnStatus === "declined") {
+                actionEl.textContent = "Patient declined EPN and no internal appt available.";
             } else {
-                statusEl.textContent = "⚠️ OUT OF TARGET";
-                statusEl.className = "status-fail";
-                actionEl.textContent = "If member declined earlier dates, mark as 'Member Declined'. If no appointments available, send SB-855 letter.";
+                actionEl.textContent = "No appointments available. Offer EPN or send SB-855.";
             }
         }
     }
