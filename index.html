@@ -21,18 +21,21 @@
         button { width: 100%; margin-top: 25px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         button:hover { background-color: #0056b3; }
         
+        /* ALERTS & SECTIONS */
         .alert-box { padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
         .alert-crisis { background-color: #ffebee; border-left: 6px solid #d32f2f; color: #c62828; }
         .alert-warning { background-color: #fff3cd; border-left: 6px solid #ffc107; color: #856404; }
+        
         .result-section { background-color: #e8f4fd; border-left: 6px solid var(--primary); padding: 20px; border-radius: 8px; margin-top: 25px; display: none; }
         
         .hidden { display: none !important; }
         .helper-text { font-size: 0.85em; color: #777; margin-top: 4px; font-style: italic; }
         
+        /* STATUS FLAGS */
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
-        /* Updated Escalation Flag Style */
         .escalation-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
+        .info-note { color: #0070e0; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
         .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
     </style>
 </head>
@@ -80,25 +83,32 @@
 
     <div id="resultArea" class="result-section">
         <div><strong>Target Due Date:</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
-        <div id="calcMethod" class="helper-text" style="margin-bottom: 10px;"></div>
+        <div id="calcMethod" class="helper-text" style="margin-bottom: 5px;"></div>
+        <div id="resetNote" class="info-note hidden"></div>
+        
         <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
         <label>4. EPN / External Network (Rula/Lucet):</label>
-        <select id="epnStatus" onchange="checkCompliance()">
+        <select id="epnStatus" onchange="revealStep5()">
+            <option value="" disabled selected>-- Select Status --</option>
             <option value="none">Not Offered / Not Applicable</option>
             <option value="accepted">Offered & ACCEPTED</option>
             <option value="declined">Offered & DECLINED</option>
         </select>
 
-        <label>5. First Offered Appointment Date:</label>
-        <input type="date" id="offeredDate" onchange="checkCompliance()" onclick="try{this.showPicker()}catch(e){}">
+        <div id="step5_container" class="hidden">
+            <label>5. First Offered Appointment Date:</label>
+            <input type="date" id="offeredDate" onchange="revealStep6()" onclick="try{this.showPicker()}catch(e){}">
+        </div>
 
-        <label>Reason for Date (If Late):</label>
-        <select id="outcomeReason" onchange="checkCompliance()">
-            <option value="met">Date is within Target</option>
-            <option value="patient_declined">Member Declined Earlier Dates (Access Met)</option>
-            <option value="provider_unavailable">No Appointments Available (Access Missed)</option>
-        </select>
+        <div id="step6_container" class="hidden">
+            <label>Reason for Date (If Late):</label>
+            <select id="outcomeReason" onchange="checkCompliance()">
+                <option value="met">Date is within Target</option>
+                <option value="patient_declined">Member Declined Earlier Dates (Access Met)</option>
+                <option value="provider_unavailable">No Appointments Available (Access Missed)</option>
+            </select>
+        </div>
 
         <div style="margin-top: 20px; text-align: center;">
             <div id="finalStatus" class="status-fail">PENDING INPUT</div>
@@ -170,6 +180,17 @@
         return result;
     }
 
+    // --- PROGRESSIVE DISCLOSURE FUNCTIONS ---
+    function revealStep5() {
+        document.getElementById("step5_container").classList.remove("hidden");
+        checkCompliance();
+    }
+
+    function revealStep6() {
+        document.getElementById("step6_container").classList.remove("hidden");
+        checkCompliance();
+    }
+
     function calculateTarget() {
         const startStr = document.getElementById("startDate").value;
         const type = document.getElementById("apptType").value;
@@ -188,9 +209,11 @@
 
         const rule = RULES[type];
         let methodText = "";
+        let originalTargetDate = null; 
 
         if (scenario === "cancel") {
             calculatedTargetDate = addBusinessDays(startDate, 10);
+            originalTargetDate = new Date(calculatedTargetDate); // Clone date
             methodText = "Calculated based on 10 Business Days from Original Target";
         } else {
             if (rule.bus > 0) {
@@ -200,13 +223,33 @@
                 calculatedTargetDate = addCalendarDays(startDate, rule.cal);
                 methodText = "Calculated based on " + rule.cal + " Calendar Days";
             }
+            originalTargetDate = new Date(calculatedTargetDate);
         }
 
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
+        const resetEl = document.getElementById("resetNote");
+
+        // --- PAST DUE CHECK ---
+        if (calculatedTargetDate < today) {
+            calculatedTargetDate = today;
+            // Show formatted original date in notification
+            resetEl.innerHTML = `⚠️ Original target <strong>(${originalTargetDate.toLocaleDateString('en-US')})</strong> passed.<br>Target reset to Today per 'Soonest Available' protocol.`;
+            resetEl.classList.remove("hidden");
+        } else {
+            resetEl.classList.add("hidden");
+        }
+
         document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
+        // Reset subsequent fields to clean state
+        document.getElementById("epnStatus").selectedIndex = 0;
+        document.getElementById("offeredDate").value = "";
+        document.getElementById("outcomeReason").selectedIndex = 0;
+        document.getElementById("step5_container").classList.add("hidden");
+        document.getElementById("step6_container").classList.add("hidden");
+
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
         
@@ -220,15 +263,16 @@
         
         const statusEl = document.getElementById("finalStatus");
         const actionEl = document.getElementById("actionItem");
-        const escalationEl = document.getElementById("escalationWarning"); // Renamed element
+        const escalationEl = document.getElementById("escalationWarning");
         const warningEl = document.getElementById("dateWarning");
 
-        // Reset Flags
         escalationEl.classList.add("hidden");
         warningEl.classList.add("hidden");
         warningEl.textContent = "";
 
-        // Check if an internal date was entered and if it is late
+        // Wait for EPN selection
+        if (!epnStatus) return;
+
         let isDateLate = false;
         if (offeredStr && calculatedTargetDate) {
             const parts = offeredStr.split('-');
@@ -237,8 +281,6 @@
                 isDateLate = true;
             }
         }
-
-        // --- COMPLIANCE LOGIC ---
 
         // 1. EPN ACCEPTED
         if (epnStatus === "accepted") {
@@ -253,7 +295,7 @@
             return;
         }
 
-        // 2. INTERNAL CHECK
+        // 2. INTERNAL CHECK (Requires Date)
         if (offeredStr && calculatedTargetDate) {
             if (!isDateLate) {
                 statusEl.textContent = "✅ COMPLIANT (Target Met)";
@@ -269,13 +311,17 @@
                 return;
             }
 
-            // FAIL STATE - NOW TRIGGERS ESCALATION
+            // FAIL STATE
             statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
             statusEl.className = "status-fail";
-            escalationEl.classList.remove("hidden"); // Show Escalation Banner
+            escalationEl.classList.remove("hidden");
             
-            [cite_start]// Updated Instruction Text [cite: 333]
             actionEl.textContent = "Initiate Escalation Protocol. Conduct warm hand off to local administrator for scheduling within access.";
+        } else {
+            // Waiting for date
+            statusEl.textContent = "PENDING INPUT";
+            statusEl.className = "status-fail";
+            actionEl.textContent = "Please enter the offered date to verify compliance.";
         }
     }
 </script>
