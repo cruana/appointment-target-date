@@ -24,7 +24,6 @@
         .alert-box { padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
         .alert-crisis { background-color: #ffebee; border-left: 6px solid #d32f2f; color: #c62828; }
         .alert-warning { background-color: #fff3cd; border-left: 6px solid #ffc107; color: #856404; }
-        
         .result-section { background-color: #e8f4fd; border-left: 6px solid var(--primary); padding: 20px; border-radius: 8px; margin-top: 25px; display: none; }
         
         .hidden { display: none !important; }
@@ -32,10 +31,8 @@
         
         .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
         .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
+        /* Updated Escalation Flag Style */
         .escalation-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
-        
-        /* New Info Note for "Reset to Today" */
-        .info-note { color: #0070e0; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
         .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
     </style>
 </head>
@@ -83,9 +80,7 @@
 
     <div id="resultArea" class="result-section">
         <div><strong>Target Due Date:</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
-        <div id="calcMethod" class="helper-text" style="margin-bottom: 5px;"></div>
-        <div id="resetNote" class="info-note hidden"></div>
-        
+        <div id="calcMethod" class="helper-text" style="margin-bottom: 10px;"></div>
         <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
         
         <label>4. EPN / External Network (Rula/Lucet):</label>
@@ -185,26 +180,19 @@
         const parts = startStr.split('-');
         const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
         
-        // Define Today (Normalize to midnight)
         const today = new Date();
         today.setHours(0,0,0,0);
-
-        // Future Date Warning
         if (startDate > today && type !== "posh") {
             if (!confirm("⚠️ WARNING: Future date selected. Is this correct?")) return; 
         }
 
         const rule = RULES[type];
         let methodText = "";
-        let resetToToday = false;
 
-        // --- CALCULATION ---
         if (scenario === "cancel") {
-            // Cancellation Logic
             calculatedTargetDate = addBusinessDays(startDate, 10);
             methodText = "Calculated based on 10 Business Days from Original Target";
         } else {
-            // Standard Logic
             if (rule.bus > 0) {
                 calculatedTargetDate = addBusinessDays(startDate, rule.bus);
                 methodText = "Calculated based on " + rule.bus + " Business Days";
@@ -214,29 +202,11 @@
             }
         }
 
-        // --- "PAST DUE" LOGIC ---
-        // If the calculated target is in the past, reset to Today
-        if (calculatedTargetDate < today) {
-            calculatedTargetDate = today;
-            resetToToday = true;
-        }
-
-        // Display Result
         const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
         document.getElementById("calcMethod").textContent = methodText;
         document.getElementById("resultArea").style.display = "block";
         
-        // Show Reset Note
-        const resetEl = document.getElementById("resetNote");
-        if (resetToToday) {
-            resetEl.textContent = "⚠️ Original target passed. Target reset to Today per 'Soonest Available' protocol.";
-            resetEl.classList.remove("hidden");
-        } else {
-            resetEl.classList.add("hidden");
-        }
-        
-        // Reset Compliance UI
         document.getElementById("finalStatus").textContent = "PENDING INPUT";
         document.getElementById("finalStatus").className = "status-fail"; 
         
@@ -250,13 +220,15 @@
         
         const statusEl = document.getElementById("finalStatus");
         const actionEl = document.getElementById("actionItem");
-        const escalationEl = document.getElementById("escalationWarning");
+        const escalationEl = document.getElementById("escalationWarning"); // Renamed element
         const warningEl = document.getElementById("dateWarning");
 
+        // Reset Flags
         escalationEl.classList.add("hidden");
         warningEl.classList.add("hidden");
         warningEl.textContent = "";
 
+        // Check if an internal date was entered and if it is late
         let isDateLate = false;
         if (offeredStr && calculatedTargetDate) {
             const parts = offeredStr.split('-');
@@ -265,6 +237,8 @@
                 isDateLate = true;
             }
         }
+
+        // --- COMPLIANCE LOGIC ---
 
         // 1. EPN ACCEPTED
         if (epnStatus === "accepted") {
@@ -295,11 +269,12 @@
                 return;
             }
 
-            // FAIL STATE
+            // FAIL STATE - NOW TRIGGERS ESCALATION
             statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
             statusEl.className = "status-fail";
-            escalationEl.classList.remove("hidden");
+            escalationEl.classList.remove("hidden"); // Show Escalation Banner
             
+            [cite_start]// Updated Instruction Text [cite: 333]
             actionEl.textContent = "Initiate Escalation Protocol. Conduct warm hand off to local administrator for scheduling within access.";
         }
     }
