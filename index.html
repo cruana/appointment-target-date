@@ -3,139 +3,199 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mental Health Scheduler</title>
+    <title>Mental Health Scheduler — KP Target Date Tool</title>
     <style>
-        :root { --primary: #0070e0; --bg: #f4f7f6; --card: #ffffff; --text: #333; }
+        :root { --primary: #0070e0; --bg: #f4f7f6; --card: #ffffff; --text: #333; --line: #e6eef5; }
+        * { box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; justify-content: center; }
-        
-        .card { background: var(--card); width: 100%; max-width: 650px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        
-        /* HEADER */
-        .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; margin-bottom: 25px; padding-bottom: 10px; }
-        h2 { margin: 0; color: var(--primary); font-size: 1.5em; }
+
+        .card { background: var(--card); width: 100%; max-width: 680px; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+
+        .header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f0f0f0; margin-bottom: 20px; padding-bottom: 12px; }
+        h2 { margin: 0; color: var(--primary); font-size: 1.45em; }
+        .subtitle { font-size: 0.78em; color: #888; font-weight: 600; letter-spacing: 0.3px; }
         .reset-btn { background-color: #f1f3f4; color: #333; border: 1px solid #dadce0; padding: 8px 16px; border-radius: 6px; font-size: 0.9em; cursor: pointer; transition: all 0.2s; font-weight: 600; }
         .reset-btn:hover { background-color: #e8eaed; border-color: #333; }
 
         label { display: block; margin-top: 15px; font-weight: 600; font-size: 0.95em; color: #555; }
-        select, input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; transition: border 0.2s; box-sizing: border-box;}
+        select, input { width: 100%; padding: 12px; margin-top: 6px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; background-color: #fafafa; transition: border 0.2s; }
         select:focus, input:focus { border-color: var(--primary); outline: none; background-color: #fff; }
-        
-        /* Clickable Date Inputs */
-        input[type="date"] { cursor: pointer; } 
+        input[type="date"] { cursor: pointer; }
 
-        .action-btn { width: 100%; margin-top: 25px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .action-btn { width: 100%; margin-top: 22px; padding: 14px; background-color: var(--primary); color: white; border: none; border-radius: 8px; font-size: 1.1em; font-weight: bold; cursor: pointer; transition: background 0.2s; }
         .action-btn:hover { background-color: #0056b3; }
-        
-        /* ALERTS & SECTIONS */
+
         .alert-box { padding: 15px; border-radius: 8px; margin-top: 20px; display: none; }
         .alert-crisis { background-color: #ffebee; border-left: 6px solid #d32f2f; color: #c62828; }
         .alert-warning { background-color: #fff3cd; border-left: 6px solid #ffc107; color: #856404; }
-        
+        .alert-transfer { background-color: #e3f2fd; border-left: 6px solid var(--primary); color: #0d47a1; }
+        .alert-box h3 { margin-top: 0; }
+
         .result-section { background-color: #e8f4fd; border-left: 6px solid var(--primary); padding: 20px; border-radius: 8px; margin-top: 25px; display: none; }
-        
+
         .hidden { display: none !important; }
         .helper-text { font-size: 0.85em; color: #777; margin-top: 4px; font-style: italic; }
-        
-        /* STATUS FLAGS */
-        .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.2em; }
-        .status-fail { color: #c62828; font-weight: bold; font-size: 1.2em; }
-        .status-warn { color: #e67e22; font-weight: bold; font-size: 1.2em; } 
-        
+        .field-group { margin-top: 12px; padding: 14px; background: #fff; border: 1px solid var(--line); border-radius: 8px; }
+        .field-group > label:first-child { margin-top: 0; }
+
+        .status-pass { color: #2e7d32; font-weight: bold; font-size: 1.15em; }
+        .status-fail { color: #c62828; font-weight: bold; font-size: 1.15em; }
+        .status-warn { color: #e67e22; font-weight: bold; font-size: 1.15em; }
+        .status-info { color: var(--primary); font-weight: bold; font-size: 1.15em; }
+
         .escalation-flag { color: #d32f2f; font-weight: bold; margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #d32f2f; border-radius: 4px; }
         .info-note { color: #0070e0; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
         .date-warning { color: #d35400; font-weight: bold; font-size: 0.9em; margin-top: 5px; display: block; }
 
-        /* POOL INFO BOX */
-        .pool-box { margin-top: 15px; padding: 15px; background-color: #fff; border: 2px solid #d32f2f; border-radius: 6px; font-size: 0.95em; text-align: left;}
+        .pool-box { margin-top: 15px; padding: 15px; background-color: #fff; border: 2px solid var(--primary); border-radius: 6px; font-size: 0.95em; text-align: left;}
+        .pool-box.crisis-pool { border-color: #d32f2f; }
         .pool-label { font-weight: bold; color: #555; }
-        .pool-number { font-family: monospace; font-size: 1.2em; color: #d32f2f; background: #ffebee; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-weight: bold; }
+        .pool-number { font-family: monospace; font-size: 1.2em; color: var(--primary); background: #e8f4fd; padding: 2px 6px; border-radius: 4px; margin-left: 5px; font-weight: bold; }
+        .crisis-pool .pool-number { color: #d32f2f; background: #ffebee; }
+
+        /* ---- Explorable "How to use / Tips" panel ---- */
+        .tips { margin-bottom: 22px; border: 1px solid var(--line); border-radius: 10px; background: #fbfdff; overflow: hidden; }
+        .tips > summary { cursor: pointer; padding: 14px 16px; font-weight: 700; color: var(--primary); list-style: none; user-select: none; display: flex; align-items: center; gap: 8px; }
+        .tips > summary::-webkit-details-marker { display: none; }
+        .tips > summary::after { content: "\25B8"; margin-left: auto; transition: transform 0.2s; }
+        .tips[open] > summary::after { transform: rotate(90deg); }
+        .tips > summary:hover { background: #f0f7ff; }
+        .tips-body { padding: 4px 18px 18px; font-size: 0.9em; color: #444; }
+        .tips-body h4 { margin: 18px 0 6px; color: #333; font-size: 0.95em; }
+        .tips-body ol { margin: 0; padding-left: 20px; }
+        .tips-body ol li { margin: 5px 0; }
+        .tips-body dl { margin: 6px 0 0; }
+        .tips-body dt { font-weight: 700; color: var(--primary); margin-top: 9px; }
+        .tips-body dd { margin: 2px 0 0; line-height: 1.45; }
+        .ref-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.92em; }
+        .ref-table th, .ref-table td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+        .ref-table th { background: #eef5fc; color: #333; font-weight: 700; }
+        .ref-table td:last-child { font-variant-numeric: tabular-nums; }
+
+        /* ---- Accessibility floor ---- */
+        select:focus-visible, input:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     </style>
 </head>
 <body>
 
 <div class="card">
     <div class="header-row">
-        <h2>Mental Health Scheduler</h2>
+        <div>
+            <h2>Mental Health Scheduler</h2>
+            <span class="subtitle">PSYCHIATRY &amp; ADDICTION MEDICINE · TARGET DATE TOOL</span>
+        </div>
         <button onclick="resetForm()" class="reset-btn">🔄 New Entry</button>
     </div>
+
+    <!-- ============ EXPLORABLE HOW-TO / TIPS / GLOSSARY ============ -->
+    <details class="tips">
+        <summary>ℹ️ How to use this tool · Tips &amp; glossary</summary>
+        <div class="tips-body">
+            <h4>How to use it</h4>
+            <ol>
+                <li>Pick the scenario: a new or existing request, a cancellation/no-show, or a crisis.</li>
+                <li>For a request, choose the appointment category. The tool shows the rule and asks only for the dates that category needs.</li>
+                <li>Enter the dates. The tool calculates the <strong>Due-by Date</strong> — the legal access deadline.</li>
+                <li>Enter the first offered appointment date. The tool checks it against the Due-by Date and tells you whether access is met or escalation is needed.</li>
+            </ol>
+
+            <h4>Terms</h4>
+            <dl>
+                <dt>Target Due Date</dt>
+                <dd>When the request started (referral created, booked at point of service, or the patient's first call), or a date the provider specified. This is the date you enter in HealthConnect. Here it's informational — not the date compliance is judged against.</dd>
+                <dt>Due-by Date</dt>
+                <dd>The legal access deadline (SB855/SB221), calculated from the Target Due Date using the KP Standard window. Compliance is judged against this date.</dd>
+                <dt>EPN / In-Network</dt>
+                <dd>Outside in-network partners (Rula, Lucet, others). An EPN offer is treated like an internal offer. A declined EPN offer counts as compliant — timely access was offered.</dd>
+                <dt>RLD</dt>
+                <dd>Used when the patient was offered a timely appointment but requested a later date. Note "RLD" in the appointment notes; the later date still counts as compliant.</dd>
+                <dt>Warm transfer</dt>
+                <dd>Connecting the patient directly to the home-clinic On Duty clinician (used for crisis and urgent). No target date is calculated.</dd>
+            </dl>
+
+            <h4>KP Standard windows</h4>
+            <table class="ref-table">
+                <tr><th>Appointment</th><th>Window</th></tr>
+                <tr><td>Urgent</td><td>Same day (24 hrs) — warm transfer</td></tr>
+                <tr><td>Routine Intake</td><td>Earlier of 14 calendar / 10 business days</td></tr>
+                <tr><td>Consult (MD)</td><td>Earlier of 14 calendar / 10 business days</td></tr>
+                <tr><td>Follow-Up (≤ 8 wks)</td><td>Earlier of 7 calendar / 5 business days</td></tr>
+                <tr><td>Routine Return (&gt; 8 wks)</td><td>15 business days</td></tr>
+            </table>
+            <div class="helper-text" style="margin-top:10px;">Windows verified against the SCPMG Target Date Guidelines (Aug 2021). EPN adjudication and the RLD path are team policy.</div>
+        </div>
+    </details>
 
     <label for="callType">1. Select Scenario:</label>
     <select id="callType" onchange="handleScenarioChange()">
         <option value="" disabled selected>-- Choose One --</option>
-        <option value="new">New Appointment Request</option>
-        <option value="cancel">Cancellation / Reschedule</option>
+        <option value="new">New / Existing Appointment Request</option>
+        <option value="cancel">Cancellation / Reschedule / No-Show</option>
         <option value="crisis">🚨 CRISIS / Safety Concern</option>
     </select>
 
-    <div id="crisisAlert" class="alert-box alert-crisis">
-        <h3>🛑 STOP: DO NOT BOOK</h3>
-        <p><strong>Protocol:</strong> Immediate Warm Transfer to OD Pool or Access & Crisis Line.</p>
-        <p><em>Criteria: Suicidal/Homicidal risk, hallucinations, domestic violence < 48hrs.</em></p>
+    <!-- ============ CRISIS (unified: warm transfer to home-clinic On Duty clinician) ============ -->
+    <div id="crisisBlock" class="hidden">
+        <div class="alert-box alert-crisis" style="display:block; margin-top:18px;">
+            <h3>🛑 STOP — Do not book. Warm transfer.</h3>
+            <p><strong>Warm transfer</strong> the patient to the home-clinic <strong>On Duty clinician</strong> (same destination as Urgent). If the On Duty clinician can't be reached, use the Access &amp; Crisis Line as backup.</p>
+            <p><em>Criteria: suicidal or homicidal risk, hallucinations, or domestic violence within 48 hrs.</em></p>
+        </div>
+        <label for="crisisClinic">Patient's Home Clinic:</label>
+        <select id="crisisClinic" onchange="updateCrisisPool()">
+            <option value="" disabled selected>-- Select --</option>
+            <option value="vista">Vista (VIS)</option>
+            <option value="rb">Rancho Bernardo (RB)</option>
+            <option value="plo">Point Loma (PLO)</option>
+            <option value="bos">Bostonia (BOS)</option>
+            <option value="otm">Otay Mesa (OTM)</option>
+        </select>
+        <div id="crisisPool" class="pool-box crisis-pool hidden">
+            <div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom:5px;">📍 <span id="crisisPoolName"></span> · On Duty routing:</div>
+            <div style="margin-bottom: 5px;"><span class="pool-label">Escalation Pool (ADA/MGR):</span> <br><span id="crisisPoolMgr" class="pool-number"></span></div>
+            <div><span class="pool-label">Clinic Tie Line:</span> <br><span id="crisisPoolPhone" class="pool-number"></span></div>
+        </div>
     </div>
 
-    <div id="poshCancelAlert" class="alert-box alert-warning">
-        <h3>⚠️ Transfer Required</h3>
-        <p>Call Center cannot reschedule POSH. Please <strong>Warm Transfer</strong> to the clinic Back Office.</p>
-    </div>
-
+    <!-- ============ NEW / EXISTING REQUEST ============ -->
     <div id="mainInputs" class="hidden">
         <label for="apptType">2. Appointment Category:</label>
-        <select id="apptType" onchange="updateLabels()">
-            <option value="therapy">Intake / FIC Therapy</option>
-            <option value="consult">MD Consult / Intake</option>
-            <option value="followup">Follow-Up</option>
-            <option value="routine">MD Routine</option>
-            <option value="posh">POSH (Hospital Discharge)</option>
-            <option value="urgent">Urgent</option>
+        <select id="apptType" onchange="handleCategoryChange()">
+            <option value="" disabled selected>-- Choose One --</option>
+            <option value="urgent">Urgent Behavioral Medicine</option>
+            <option value="intake">Routine Intake (New patient, initial)</option>
+            <option value="consult">Consult (Initial with MD)</option>
+            <option value="followup">Follow-Up (≤ 8 weeks from prior visit)</option>
+            <option value="routineReturn">Routine Return (&gt; 8 weeks from prior visit)</option>
         </select>
-        <div id="ruleText" class="helper-text">Standard: 14 Calendar or 10 Business days</div>
+        <div id="ruleText" class="helper-text"></div>
 
-        <label id="dateLabel" for="startDate">3. Referral / Contact Date:</label>
-        <input type="date" id="startDate" onclick="try{this.showPicker()}catch(e){}">
-
-        <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
-    </div>
-
-    <div id="resultArea" class="result-section">
-        <div><strong>Target Due Date:</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
-        <div id="calcMethod" class="helper-text" style="margin-bottom: 5px;"></div>
-        <div id="resetNote" class="info-note hidden"></div>
-        
-        <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
-        
-        <label>4. First Offered Appointment Date (Internal):</label>
-        <input type="date" id="offeredDate" onchange="revealStep4b()" onclick="try{this.showPicker()}catch(e){}">
-
-        <div id="step4b_container" class="hidden">
-            <label>Reason for Date (If Late):</label>
-            <select id="outcomeReason" onchange="checkCompliance()">
-                <option value="met">Date is within Target</option>
-                <option value="patient_declined">Member Declined Earlier Dates (Access Met)</option>
-                <option value="provider_unavailable">No Appointments Available (Access Missed)</option>
+        <!-- PROVIDER TYPE: MD vs Therapist — affects escalation only, not scoring -->
+        <div id="providerTypeBlock" class="hidden">
+            <label for="providerType">Provider type for this appointment:</label>
+            <select id="providerType" onchange="if(calculatedTargetDate){checkCompliance();}">
+                <option value="therapist" selected>Therapist</option>
+                <option value="md">MD (Psychiatrist)</option>
             </select>
+            <div class="helper-text">Therapist appointments are checked against the Due-by Date: an offer on or before it is compliant, after it is non-compliant (escalation applies). MD appointments follow predetermined scheduling — no Due-by compliance check or escalation.</div>
         </div>
 
-        <div id="step5_container" class="hidden">
-            <label>5. EPN / In-Network Providers:</label>
-            <select id="epnStatus" onchange="checkCompliance()">
-                <option value="" disabled selected>-- Select Status --</option>
-                <option value="none">Not Offered / Not Applicable</option>
-                <option value="accepted">Offered & ACCEPTED</option>
-                <option value="declined">Offered & DECLINED</option>
+        <!-- URGENT: warm transfer to home-clinic On Duty clinician (unified with Crisis) -->
+        <div id="urgentBlock" class="hidden">
+            <div class="alert-box alert-transfer" style="display:block;">
+                <h3>↪️ Warm Transfer to Home-Clinic On Duty Clinician</h3>
+                <p>Urgent Behavioral Medicine is managed by the local clinic. <strong>Warm transfer</strong> the call to the On Duty clinician at the patient's home clinic — <em>unless</em> there is a documented instruction to schedule with a specific provider or at a specific time.</p>
+            </div>
+            <label for="urgentDocumented">Is there a documented provider/time instruction?</label>
+            <select id="urgentDocumented" onchange="handleUrgentDoc()">
+                <option value="no" selected>No — warm transfer to home clinic</option>
+                <option value="yes">Yes — documented date/provider to schedule</option>
             </select>
-            <div class="helper-text">Rula, Lucet, or other In-Network partners.</div>
-        </div>
 
-        <div style="margin-top: 20px; text-align: center;">
-            <div id="finalStatus" class="status-fail">PENDING INPUT</div>
-            <div id="dateWarning" class="date-warning hidden"></div>
-            
-            <div id="escalationWarning" class="escalation-flag hidden">
-                ⚠️ ESCALATION PROTOCOL REQUIRED
-                <div style="font-weight: normal; margin-top:5px; font-size: 0.9em; margin-bottom: 10px;">Conduct Warm Hand-off to Local Admin</div>
-                
-                <label for="homeClinic" style="text-align: left; font-size: 0.9em;">Select Patient's Home Clinic:</label>
-                <select id="homeClinic" onchange="updatePoolInfo()" style="margin-top:2px;">
+            <div id="urgentTransfer">
+                <label for="urgentClinic">Patient's Home Clinic:</label>
+                <select id="urgentClinic" onchange="updateUrgentPool()">
                     <option value="" disabled selected>-- Select --</option>
                     <option value="vista">Vista (VIS)</option>
                     <option value="rb">Rancho Bernardo (RB)</option>
@@ -143,30 +203,194 @@
                     <option value="bos">Bostonia (BOS)</option>
                     <option value="otm">Otay Mesa (OTM)</option>
                 </select>
-
-                <div id="poolDisplay" class="pool-box hidden">
-                    <div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom:5px;">📍 <span id="poolClinicName"></span> Routing:</div>
-                    <div style="margin-bottom: 5px;"><span class="pool-label">Escalation Pool (ADA/MGR):</span> <br><span id="poolMgr" class="pool-number"></span></div>
-                    <div><span class="pool-label">Clinic Tie Line:</span> <br><span id="poolPhone" class="pool-number"></span></div>
+                <div id="urgentPool" class="pool-box crisis-pool hidden">
+                    <div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom:5px;">📍 <span id="urgentPoolName"></span> · On Duty routing:</div>
+                    <div style="margin-bottom: 5px;"><span class="pool-label">Escalation Pool (ADA/MGR):</span> <br><span id="urgentPoolMgr" class="pool-number"></span></div>
+                    <div><span class="pool-label">Clinic Tie Line:</span> <br><span id="urgentPoolPhone" class="pool-number"></span></div>
                 </div>
             </div>
-            
-            <div id="actionItem" class="helper-text"></div>
+
+            <div id="urgentDocDate" class="hidden">
+                <label for="urgentDate">Documented appointment date (target):</label>
+                <input type="date" id="urgentDate">
+                <button onclick="calculateTarget()" class="action-btn">Set Documented Target</button>
+            </div>
+        </div>
+
+        <!-- INTAKE / CONSULT: access start date drives the window -->
+        <div id="intakeBlock" class="hidden">
+            <label for="qualifierType">How was this initiated?</label>
+            <select id="qualifierType">
+                <option value="referral">Initiated via Tapestry referral (use referral-created date)</option>
+                <option value="pos">Booked at point of service (use booking date)</option>
+                <option value="patient">Initiated by patient (use first day patient called)</option>
+            </select>
+            <label id="startLabel" for="startDate">Target Due Date (initiation date):</label>
+            <input type="date" id="startDate">
+            <div class="helper-text">Target Due Date = when the request started (referral created, booked at point of service, or first patient call) or a date specified by the MD/Therapist. This is the date entered in HealthConnect. The Due-by Date (legal access deadline) is calculated from it. Use the date that matches your selection above.</div>
+            <button onclick="calculateTarget()" class="action-btn">Calculate Due-by Date</button>
+        </div>
+
+        <!-- FOLLOW-UP: stated date wins, else fallbacks -->
+        <div id="followupBlock" class="hidden">
+            <label for="fuSource">What determines the target?</label>
+            <select id="fuSource" onchange="handleFuSource()">
+                <option value="provider">Specific date indicated by provider</option>
+                <option value="calledLater">Patient left without appt, called later (≤8 wks)</option>
+                <option value="unspecified">Unspecified — default to 2 weeks from last visit</option>
+            </select>
+
+            <div id="fuProvider">
+                <label for="fuProviderDate">Provider-specified date (earlier end if a range):</label>
+                <input type="date" id="fuProviderDate">
+            </div>
+            <div id="fuCalled" class="hidden">
+                <label for="fuCallDate">Date of patient's call:</label>
+                <input type="date" id="fuCallDate">
+            </div>
+            <div id="fuUnspec" class="hidden">
+                <label for="fuLastVisit">Last therapist/MD visit date:</label>
+                <input type="date" id="fuLastVisit">
+            </div>
+            <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
+        </div>
+
+        <!-- ROUTINE RETURN >8wks -->
+        <div id="returnBlock" class="hidden">
+            <label for="rrSource">What determines the target?</label>
+            <select id="rrSource" onchange="handleRrSource()">
+                <option value="provider">Provider-specified date (earlier end if a range)</option>
+                <option value="patient">The day the patient wants to be seen</option>
+                <option value="backstop">No date given — use 15 Business Day backstop</option>
+            </select>
+            <div id="rrProvider">
+                <label for="rrProviderDate">Provider-specified date:</label>
+                <input type="date" id="rrProviderDate">
+            </div>
+            <div id="rrPatient" class="hidden">
+                <label for="rrPatientDate">Date patient wants to be seen:</label>
+                <input type="date" id="rrPatientDate">
+            </div>
+            <div id="rrBackstop" class="hidden">
+                <label for="rrStartDate">Reference date (request/referral):</label>
+                <input type="date" id="rrStartDate">
+            </div>
+            <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
+        </div>
+    </div>
+
+    <!-- ============ CANCELLATION / RESCHEDULE / NO-SHOW ============ -->
+    <div id="cancelInputs" class="hidden">
+        <label for="cancelType">2. Cancellation type:</label>
+        <select id="cancelType" onchange="handleCancelType()">
+            <option value="" disabled selected>-- Choose One --</option>
+            <option value="clinic_cancel">Clinic/clinician cancelled the patient</option>
+            <option value="clinic_declined_rebook">Clinic cancelled, patient declined new appt, now calling back</option>
+            <option value="patient_intake_consult">Patient cancels/no-shows a Routine Intake or Consult</option>
+            <option value="patient_booked_sooner">Patient booked a sooner appointment</option>
+            <option value="patient_other">Anything other than the above</option>
+        </select>
+
+        <div id="origTargetBlock" class="hidden">
+            <label for="origTarget">Original target date:</label>
+            <input type="date" id="origTarget">
+        </div>
+        <div id="callDateBlock" class="hidden">
+            <label id="callDateLabel" for="callDate">Date patient calls us (or we call) to reschedule:</label>
+            <input type="date" id="callDate">
+        </div>
+        <div id="wantsDateBlock" class="hidden">
+            <label for="wantsDate">New date the patient wants to be seen:</label>
+            <input type="date" id="wantsDate">
+        </div>
+        <button id="cancelCalcBtn" onclick="calculateTarget()" class="action-btn hidden">Determine Target Date</button>
+    </div>
+
+    <!-- ============ RESULT ============ -->
+    <div id="resultArea" class="result-section">
+        <div><strong>Due-by Date (SB855/SB221 legal access deadline):</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
+        <div id="calcMethod" class="helper-text" style="margin-bottom: 5px;"></div>
+        <div id="targetInfoLine" class="helper-text" style="margin-bottom: 5px;"></div>
+        <div id="resetNote" class="info-note hidden"></div>
+
+        <div id="complianceWrap">
+            <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
+
+            <label>First Offered Appointment Date (Internal):</label>
+            <input type="date" id="offeredDate" onchange="revealCompliance()">
+
+            <div id="epnContainer" class="hidden field-group">
+                <label>EPN / In-Network Providers:</label>
+                <select id="epnStatus" onchange="handleEpnChange()">
+                    <option value="" disabled selected>-- Select Status --</option>
+                    <option value="not_eligible">EPN Not Eligible</option>
+                    <option value="offered">EPN Offered</option>
+                    <option value="declined">EPN Declined</option>
+                </select>
+                <div class="helper-text">Rula, Lucet, or other In-Network partners. An EPN offer produces an offered date, judged against the Due-by Date like an internal offer. A declined EPN offer is compliant (timely access was offered).</div>
+                <div id="epnDateContainer" class="hidden" style="margin-top:8px;">
+                    <label for="epnOfferedDate">EPN Offered Appointment Date:</label>
+                    <input type="date" id="epnOfferedDate" onchange="checkCompliance()">
+                </div>
+            </div>
+
+            <!-- RLD GATE: shown only when the offered date falls AFTER the Due-by Date. -->
+            <div id="rldGate" class="hidden field-group">
+                <label for="rldOffered">Was an appointment offered on or before the Due-by Date?</label>
+                <select id="rldOffered" onchange="checkCompliance()">
+                    <option value="" disabled selected>-- Select --</option>
+                    <option value="yes">Yes — a timely slot was offered</option>
+                    <option value="no">No — no timely slot was available</option>
+                </select>
+                <div class="helper-text">The offered date is after the Due-by Date. If a timely slot was offered but the member chose later, that's still compliant — the next line tells you what to note.</div>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <div id="finalStatus" class="status-fail">PENDING INPUT</div>
+                <div id="dateWarning" class="date-warning hidden"></div>
+
+                <div id="escalationWarning" class="escalation-flag hidden">
+                    ⚠️ ESCALATION PROTOCOL REQUIRED
+                    <div style="font-weight: normal; margin-top:5px; font-size: 0.9em; margin-bottom: 10px;">Conduct Warm Hand-off to Local Admin</div>
+                    <label for="homeClinic" style="text-align: left; font-size: 0.9em;">Select Patient's Home Clinic:</label>
+                    <select id="homeClinic" onchange="updatePoolInfo()" style="margin-top:2px;">
+                        <option value="" disabled selected>-- Select --</option>
+                        <option value="vista">Vista (VIS)</option>
+                        <option value="rb">Rancho Bernardo (RB)</option>
+                        <option value="plo">Point Loma (PLO)</option>
+                        <option value="bos">Bostonia (BOS)</option>
+                        <option value="otm">Otay Mesa (OTM)</option>
+                    </select>
+                    <div id="poolDisplay" class="pool-box crisis-pool hidden">
+                        <div style="margin-bottom: 8px; border-bottom: 1px solid #eee; padding-bottom:5px;">📍 <span id="poolClinicName"></span> Routing:</div>
+                        <div style="margin-bottom: 5px;"><span class="pool-label">Escalation Pool (ADA/MGR):</span> <br><span id="poolMgr" class="pool-number"></span></div>
+                        <div><span class="pool-label">Clinic Tie Line:</span> <br><span id="poolPhone" class="pool-number"></span></div>
+                    </div>
+                </div>
+                <div id="actionItem" class="helper-text"></div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    const RULES = {
-        "therapy":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
-        "consult":  { cal: 14, bus: 10, note: "14 Calendar / 10 Business Days" },
-        "followup": { cal: 7,  bus: 5,  note: "7 Calendar / 5 Business Days" },
-        "routine":  { cal: 0,  bus: 15, note: "15 Business Days" },
-        "posh":     { cal: 3,  bus: 0,  note: "3 Calendar Days from Discharge" },
-        "urgent":   { cal: 1,  bus: 0,  note: "1 Calendar Day" }
+    /* =========================================================
+       KP PSYCH/ADM Target Date engine — Aug 2021 guideline.
+       Window pairs (cal/bus) are COMPLIANCE WINDOWS; the
+       compliant target is the EARLIER of the two dates.
+       Many paths are STATED dates, not computed windows —
+       each resolver result carries an explicit `computed`
+       flag so the Soonest-Available clamp never has to guess.
+       ========================================================= */
+
+    const WINDOWS = {
+        urgent:        { cal: 0,  bus: 0,  note: "Urgent: same day (24 hrs) — managed by local clinic" },
+        intake:        { cal: 14, bus: 10, note: "Intake: earlier of 14 Calendar / 10 Business" },
+        consult:       { cal: 14, bus: 10, note: "Consult: earlier of 14 Calendar / 10 Business" },
+        followup:      { cal: 7,  bus: 5,  note: "Follow-Up: 7 Calendar / 5 Business" },
+        routineReturn: { cal: 0,  bus: 15, note: "Routine >8 wks: 15 Business" }
     };
 
-    // POOL DATA sourced from Page 6 (ADA) and Page 11 (Phone) of the PDF
     const POOLS = {
         "vista": { name: "Vista", mgr: "124531", phone: "8284 2471" },
         "rb":    { name: "Rancho Bernardo", mgr: "124535", phone: "8282 5190" },
@@ -177,238 +401,396 @@
 
     let calculatedTargetDate = null;
 
-    function resetForm() {
-        document.getElementById("callType").selectedIndex = 0;
-        document.getElementById("homeClinic").selectedIndex = 0;
-        document.getElementById("apptType").selectedIndex = 0;
-        document.getElementById("startDate").value = "";
-        
-        document.getElementById("offeredDate").value = "";
-        document.getElementById("outcomeReason").selectedIndex = 0;
-        document.getElementById("epnStatus").selectedIndex = 0;
-
-        calculatedTargetDate = null;
-        handleScenarioChange();
-        
-        document.getElementById("resultArea").style.display = "none";
-        document.getElementById("step4b_container").classList.add("hidden");
-        document.getElementById("step5_container").classList.add("hidden");
-        document.getElementById("poolDisplay").classList.add("hidden");
-        document.getElementById("escalationWarning").classList.add("hidden");
-        
-        document.getElementById("resetNote").classList.add("hidden");
-        document.getElementById("finalStatus").textContent = "PENDING INPUT";
-        document.getElementById("finalStatus").className = "status-fail";
+    /* ---------- date helpers ---------- */
+    function parseDate(str) {
+        if (!str) return null;
+        const p = str.split('-');
+        return new Date(p[0], p[1] - 1, p[2]);
     }
-
-    function handleScenarioChange() {
-        const scenario = document.getElementById("callType").value;
-        const apptType = document.getElementById("apptType").value;
-        
-        document.getElementById("crisisAlert").style.display = "none";
-        document.getElementById("poshCancelAlert").style.display = "none";
-        document.getElementById("mainInputs").classList.add("hidden");
-        document.getElementById("resultArea").style.display = "none";
-
-        if (scenario === "crisis") {
-            document.getElementById("crisisAlert").style.display = "block";
-        } else if (scenario === "cancel" && apptType === "posh") {
-            document.getElementById("poshCancelAlert").style.display = "block";
-        } else if (scenario) {
-            document.getElementById("mainInputs").classList.remove("hidden");
-            updateLabels();
-        }
-    }
-
-    function updateLabels() {
-        const type = document.getElementById("apptType").value;
-        const scenario = document.getElementById("callType").value;
-        
-        if (scenario === "cancel") {
-            document.getElementById("ruleText").textContent = "Reschedule: 10 Business Days (approx 14 Calendar)";
-            document.getElementById("dateLabel").textContent = "Original Target / Last Seen Date:";
-            if (type === "posh") handleScenarioChange(); 
-        } else {
-            document.getElementById("ruleText").textContent = RULES[type].note;
-            document.getElementById("dateLabel").textContent = (type === "posh") ? "Hospital Discharge Date:" : "Referral / Contact Date:";
-        }
-    }
-
-    function addBusinessDays(date, days) {
-        let result = new Date(date);
-        let added = 0;
-        while (added < days) {
-            result.setDate(result.getDate() + 1);
-            if (result.getDay() !== 0 && result.getDay() !== 6) added++;
-        }
-        return result;
-    }
-
     function addCalendarDays(date, days) {
-        let result = new Date(date);
-        result.setDate(result.getDate() + days);
-        return result;
+        const r = new Date(date); r.setDate(r.getDate() + days); return r;
+    }
+    function addBusinessDays(date, days) {
+        // Weekends-only business-day math (no holiday calendar by decision).
+        const r = new Date(date); let added = 0;
+        while (added < days) {
+            r.setDate(r.getDate() + 1);
+            const d = r.getDay();
+            if (d !== 0 && d !== 6) added++;
+        }
+        return r;
+    }
+    function earlierOfWindow(startDate, win) {
+        // The compliant target is the EARLIER of the calendar and business dates.
+        if (win.cal === 0 && win.bus === 0) return new Date(startDate);
+        if (win.cal === 0) return addBusinessDays(startDate, win.bus);
+        if (win.bus === 0) return addCalendarDays(startDate, win.cal);
+        const cal = addCalendarDays(startDate, win.cal);
+        const bus = addBusinessDays(startDate, win.bus);
+        return cal < bus ? cal : bus;
+    }
+    const DATE_OPTS = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
+
+    /* ---------- small DOM helpers ---------- */
+    function show(id) { document.getElementById(id).classList.remove("hidden"); }
+    function hide(id) { document.getElementById(id).classList.add("hidden"); }
+
+    /* One pool renderer for every routing box (crisis, urgent, escalation). */
+    function renderPool(clinicKey, boxId, nameId, mgrId, phoneId) {
+        const box = document.getElementById(boxId);
+        if (!clinicKey) { box.classList.add("hidden"); return; }
+        const d = POOLS[clinicKey];
+        document.getElementById(nameId).textContent = d.name;
+        document.getElementById(mgrId).textContent = d.mgr;
+        document.getElementById(phoneId).textContent = d.phone;
+        box.classList.remove("hidden");
+    }
+    function updateCrisisPool() { renderPool(document.getElementById("crisisClinic").value, "crisisPool", "crisisPoolName", "crisisPoolMgr", "crisisPoolPhone"); }
+    function updateUrgentPool() { renderPool(document.getElementById("urgentClinic").value, "urgentPool", "urgentPoolName", "urgentPoolMgr", "urgentPoolPhone"); }
+    function updatePoolInfo()   { renderPool(document.getElementById("homeClinic").value,   "poolDisplay", "poolClinicName", "poolMgr", "poolPhone"); }
+
+    /* ---------- scenario / category routing ---------- */
+    function handleScenarioChange() {
+        const s = document.getElementById("callType").value;
+        hide("crisisBlock"); hide("mainInputs"); hide("cancelInputs");
+        document.getElementById("resultArea").style.display = "none";
+
+        if (s === "crisis") {
+            show("crisisBlock");                       // unified warm-transfer destination
+        } else if (s === "cancel") {
+            show("cancelInputs");
+        } else if (s === "new") {
+            show("mainInputs");
+            document.getElementById("apptType").selectedIndex = 0;
+            handleCategoryChange();
+        }
     }
 
-    function revealStep4b() {
-        document.getElementById("step4b_container").classList.remove("hidden");
-        document.getElementById("step5_container").classList.remove("hidden");
-        checkCompliance();
+    function handleCategoryChange() {
+        const t = document.getElementById("apptType").value;
+        ["urgentBlock","intakeBlock","followupBlock","returnBlock"].forEach(hide);
+        document.getElementById("ruleText").textContent = t ? (WINDOWS[t] ? WINDOWS[t].note : "") : "";
+        document.getElementById("resultArea").style.display = "none";
+        if (!t) return;
+
+        // Provider type: intake locks to Therapist, consult locks to MD (both hidden).
+        // Follow-up and routine return show the selector (varies); urgent has none.
+        const ptBlock = "providerTypeBlock";
+        const ptSel = document.getElementById("providerType");
+        if (t === "intake") { ptSel.value = "therapist"; hide(ptBlock); }
+        else if (t === "consult") { ptSel.value = "md"; hide(ptBlock); }
+        else if (t === "followup" || t === "routineReturn") { ptSel.value = "therapist"; show(ptBlock); }
+        else { hide(ptBlock); }
+
+        if (t === "urgent") { show("urgentBlock"); handleUrgentDoc(); }
+        else if (t === "intake" || t === "consult") { show("intakeBlock"); }
+        else if (t === "followup") { show("followupBlock"); handleFuSource(); }
+        else if (t === "routineReturn") { show("returnBlock"); handleRrSource(); }
     }
 
-    function calculateTarget() {
-        const startStr = document.getElementById("startDate").value;
-        const type = document.getElementById("apptType").value;
+    /* ---------- urgent ---------- */
+    function handleUrgentDoc() {
+        const doc = document.getElementById("urgentDocumented").value;
+        if (doc === "yes") { hide("urgentTransfer"); show("urgentDocDate"); }
+        else { show("urgentTransfer"); hide("urgentDocDate"); }
+    }
+
+    /* ---------- follow-up & routine-return source toggles ---------- */
+    function handleFuSource() {
+        const v = document.getElementById("fuSource").value;
+        hide("fuProvider"); hide("fuCalled"); hide("fuUnspec");
+        if (v === "provider") show("fuProvider");
+        else if (v === "calledLater") show("fuCalled");
+        else show("fuUnspec");
+    }
+    function handleRrSource() {
+        const v = document.getElementById("rrSource").value;
+        hide("rrProvider"); hide("rrPatient"); hide("rrBackstop");
+        if (v === "provider") show("rrProvider");
+        else if (v === "patient") show("rrPatient");
+        else show("rrBackstop");
+    }
+
+    /* ---------- cancellations ---------- */
+    function handleCancelType() {
+        const v = document.getElementById("cancelType").value;
+        hide("origTargetBlock"); hide("callDateBlock"); hide("wantsDateBlock");
+        document.getElementById("resultArea").style.display = "none";
+        const btn = document.getElementById("cancelCalcBtn");
+        btn.classList.remove("hidden");
+        const callLbl = document.getElementById("callDateLabel");
+
+        if (v === "clinic_cancel" || v === "patient_booked_sooner") {
+            show("origTargetBlock");
+        } else if (v === "clinic_declined_rebook" || v === "patient_intake_consult") {
+            callLbl.textContent = "Date patient calls us (or we call) to reschedule:";
+            show("callDateBlock");
+        } else if (v === "patient_other") {
+            show("wantsDateBlock");
+        } else {
+            btn.classList.add("hidden");
+        }
+    }
+
+    /* ---------- core resolver ----------
+       Returns { date, method, compliance, computed }.
+       compliance = is this an access-tracked category (run the Due-by check)?
+       computed   = was the date derived from a window calc (clamp-eligible)?
+                    Stated dates (provider/patient/call) are never clamped.        */
+    function resolveTarget() {
         const scenario = document.getElementById("callType").value;
 
-        if (!startStr) { alert("Please select a date first."); return; }
-
-        const parts = startStr.split('-');
-        const startDate = new Date(parts[0], parts[1] - 1, parts[2]);
-        
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        if (startDate > today && type !== "posh") {
-            if (!confirm("⚠️ WARNING: Future date selected. Is this correct?")) return; 
-        }
-
-        const rule = RULES[type];
-        let methodText = "";
-        let originalTargetDate = null; 
-
+        // CANCELLATIONS — all stated dates.
         if (scenario === "cancel") {
-            calculatedTargetDate = addBusinessDays(startDate, 10);
-            originalTargetDate = new Date(calculatedTargetDate);
-            methodText = "Calculated based on 10 Business Days from Original Target";
-        } else {
-            if (rule.bus > 0) {
-                calculatedTargetDate = addBusinessDays(startDate, rule.bus);
-                methodText = "Calculated based on " + rule.bus + " Business Days";
-            } else {
-                calculatedTargetDate = addCalendarDays(startDate, rule.cal);
-                methodText = "Calculated based on " + rule.cal + " Calendar Days";
-            }
-            originalTargetDate = new Date(calculatedTargetDate);
+            const v = document.getElementById("cancelType").value;
+            if (v === "clinic_cancel")
+                return { date: parseDate(document.getElementById("origTarget").value),
+                         method: "Clinic cancelled: original target date unchanged", compliance: false, computed: false };
+            if (v === "patient_booked_sooner")
+                return { date: parseDate(document.getElementById("origTarget").value),
+                         method: "Patient booked sooner: target unchanged", compliance: false, computed: false };
+            if (v === "clinic_declined_rebook" || v === "patient_intake_consult")
+                return { date: parseDate(document.getElementById("callDate").value),
+                         method: "Target = day patient calls (or we call) to reschedule", compliance: false, computed: false };
+            if (v === "patient_other")
+                return { date: parseDate(document.getElementById("wantsDate").value),
+                         method: "Target = new date patient wants to be seen", compliance: false, computed: false };
+            return null;
         }
 
-        const options = { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' };
-        const resetEl = document.getElementById("resetNote");
+        const t = document.getElementById("apptType").value;
 
-        if (calculatedTargetDate < today) {
-            calculatedTargetDate = today;
-            resetEl.innerHTML = `⚠️ Original target <strong>(${originalTargetDate.toLocaleDateString('en-US')})</strong> passed.<br>Target reset to Today per 'Soonest Available' protocol.`;
+        // URGENT — warm transfer to home clinic, unless a provider/time is documented.
+        if (t === "urgent") {
+            const doc = document.getElementById("urgentDocumented").value;
+            if (doc === "yes")
+                return { date: parseDate(document.getElementById("urgentDate").value),
+                         method: "Urgent: documented provider/time date", compliance: false, computed: false };
+            return { transferOnly: true };
+        }
+
+        // FOLLOW-UP — always scored against the 7 Cal / 5 Bus window.
+        if (t === "followup") {
+            const v = document.getElementById("fuSource").value;
+            if (v === "provider")
+                return { date: parseDate(document.getElementById("fuProviderDate").value),
+                         method: "Follow-Up: provider-specified date (earlier end of range)", compliance: true, computed: false };
+            if (v === "calledLater")
+                return { date: parseDate(document.getElementById("fuCallDate").value),
+                         method: "Follow-Up: date of patient call (no documented date)", compliance: true, computed: false };
+            const lv = parseDate(document.getElementById("fuLastVisit").value);
+            return { date: lv ? addCalendarDays(lv, 14) : null,
+                     method: "Follow-Up: unspecified → 2 weeks from last visit", compliance: true, computed: true };
+        }
+
+        // ROUTINE RETURN
+        if (t === "routineReturn") {
+            const v = document.getElementById("rrSource").value;
+            if (v === "provider")
+                return { date: parseDate(document.getElementById("rrProviderDate").value),
+                         method: "Routine Return: provider-specified date", compliance: true, computed: false };
+            if (v === "patient")
+                return { date: parseDate(document.getElementById("rrPatientDate").value),
+                         method: "Routine Return: day patient wants to be seen", compliance: true, computed: false };
+            const sd = parseDate(document.getElementById("rrStartDate").value);
+            return { date: sd ? earlierOfWindow(sd, WINDOWS.routineReturn) : null,
+                     method: WINDOWS.routineReturn.note + " (backstop)", compliance: true, computed: true };
+        }
+
+        // INTAKE / CONSULT — computed window from the access start date.
+        if (t === "intake" || t === "consult") {
+            const sd = parseDate(document.getElementById("startDate").value);
+            const win = WINDOWS[t];
+            return { date: sd ? earlierOfWindow(sd, win) : null, method: win.note, compliance: true, computed: true };
+        }
+        return null;
+    }
+
+    /* ---------- calculate + display ---------- */
+    function calculateTarget() {
+        const res = resolveTarget();
+        if (!res) { alert("Please complete the selections above."); return; }
+
+        if (res.transferOnly) {
+            alert("This is a warm-transfer path — route the call to the home clinic. No target date is calculated.");
+            return;
+        }
+        if (!res.date || isNaN(res.date.getTime())) { alert("Please enter the required date."); return; }
+
+        const today = new Date(); today.setHours(0,0,0,0);
+        calculatedTargetDate = res.date;
+
+        // Soonest-Available clamp — only for COMPUTED windows, never stated dates.
+        const resetEl = document.getElementById("resetNote");
+        if (res.computed && calculatedTargetDate < today) {
+            const original = new Date(calculatedTargetDate);
+            calculatedTargetDate = new Date(today);
+            resetEl.innerHTML = `⚠️ Original target <strong>(${original.toLocaleDateString('en-US')})</strong> passed.<br>Target reset to Today per 'Soonest Available' protocol.`;
             resetEl.classList.remove("hidden");
         } else {
             resetEl.classList.add("hidden");
         }
 
-        document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', options);
-        document.getElementById("calcMethod").textContent = methodText;
-        document.getElementById("resultArea").style.display = "block";
-        
-        // Soft reset
-        document.getElementById("offeredDate").value = "";
-        document.getElementById("outcomeReason").selectedIndex = 0;
-        document.getElementById("epnStatus").selectedIndex = 0;
-        document.getElementById("step4b_container").classList.add("hidden");
-        document.getElementById("step5_container").classList.add("hidden");
-        document.getElementById("escalationWarning").classList.add("hidden");
+        document.getElementById("targetDateDisplay").textContent = calculatedTargetDate.toLocaleDateString('en-US', DATE_OPTS);
+        document.getElementById("calcMethod").textContent = res.method;
 
-        document.getElementById("finalStatus").textContent = "PENDING INPUT";
-        document.getElementById("finalStatus").className = "status-fail"; 
-        
+        // Informational: the Target Due Date (anchor) the clerk entered (intake/consult only).
+        const curCat = document.getElementById("apptType").value;
+        const anchor = (curCat === "intake" || curCat === "consult")
+            ? parseDate(document.getElementById("startDate").value) : null;
+        const infoEl = document.getElementById("targetInfoLine");
+        if (anchor) {
+            infoEl.textContent = "Target Due Date (entered in HealthConnect): "
+                + anchor.toLocaleDateString('en-US', DATE_OPTS)
+                + " — informational, not the compliance date.";
+            infoEl.style.display = "block";
+        } else {
+            infoEl.style.display = "none";
+        }
+        document.getElementById("resultArea").style.display = "block";
+
+        // Compliance section only applies to access-tracked categories.
+        document.getElementById("complianceWrap").style.display = res.compliance ? "block" : "none";
+
+        // Soft reset of compliance inputs.
+        document.getElementById("offeredDate").value = "";
+        document.getElementById("epnStatus").selectedIndex = 0;
+        document.getElementById("epnOfferedDate").value = "";
+        document.getElementById("rldOffered").selectedIndex = 0;
+        hide("epnContainer"); hide("epnDateContainer"); hide("escalationWarning"); hide("rldGate");
+        document.getElementById("finalStatus").textContent = res.compliance ? "PENDING INPUT" : "INFORMATIONAL — NO ACCESS CHECK";
+        document.getElementById("finalStatus").className = res.compliance ? "status-fail" : "status-info";
+        document.getElementById("actionItem").textContent = "";
+        if (res.compliance) checkCompliance();
+    }
+
+    function handleEpnChange() {
+        // Show the EPN offered-date input only when EPN was offered.
+        const v = document.getElementById("epnStatus").value;
+        if (v === "offered") { show("epnDateContainer"); }
+        else { hide("epnDateContainer"); document.getElementById("epnOfferedDate").value = ""; }
         checkCompliance();
     }
 
-    function updatePoolInfo() {
-        const clinicKey = document.getElementById("homeClinic").value;
-        const poolEl = document.getElementById("poolDisplay");
-        
-        if (!clinicKey) {
-            poolEl.classList.add("hidden");
-            return;
+    function revealCompliance() {
+        // EPN / In-Network is therapist-only (not offered for MD appointments).
+        if (document.getElementById("providerType").value === "md") {
+            hide("epnContainer");
+            document.getElementById("epnStatus").selectedIndex = 0;
+        } else {
+            show("epnContainer");
         }
-
-        const data = POOLS[clinicKey];
-        document.getElementById("poolClinicName").textContent = data.name;
-        document.getElementById("poolMgr").textContent = data.mgr;
-        document.getElementById("poolPhone").textContent = data.phone;
-        poolEl.classList.remove("hidden");
+        checkCompliance();
     }
 
+    /* ---------- compliance engine ----------
+       Order of resolution:
+         1. MD            -> predetermined, no verdict.
+         2. EPN declined  -> compliant (timely access offered & declined).
+         3. No dates yet  -> pending.
+         4. On time       -> compliant (earliest offer <= Due-by).
+         5. Late          -> reveal the RLD gate:
+                              Yes = timely slot offered, member chose later -> compliant.
+                              No  = no timely slot -> non-compliant + escalate.       */
     function checkCompliance() {
+        const dueByDate = calculatedTargetDate;
         const offeredStr = document.getElementById("offeredDate").value;
-        const epnStatus = document.getElementById("epnStatus").value;
-        const outcomeReason = document.getElementById("outcomeReason").value;
-        
-        const statusEl = document.getElementById("finalStatus");
-        const actionEl = document.getElementById("actionItem");
+        const epnStatus  = document.getElementById("epnStatus").value;
+        const epnDateStr = document.getElementById("epnOfferedDate").value;
+        const rldOffered = document.getElementById("rldOffered").value;
+        const statusEl   = document.getElementById("finalStatus");
+        const actionEl   = document.getElementById("actionItem");
         const escalationEl = document.getElementById("escalationWarning");
-        const warningEl = document.getElementById("dateWarning");
+        const warningEl  = document.getElementById("dateWarning");
+        const rldGate    = document.getElementById("rldGate");
+        const isMD = document.getElementById("providerType").value === "md";
 
         escalationEl.classList.add("hidden");
         warningEl.classList.add("hidden");
         warningEl.textContent = "";
 
-        let isInternalLate = false;
-        let internalDateProvided = false;
-
-        if (offeredStr && calculatedTargetDate) {
-            internalDateProvided = true;
-            const parts = offeredStr.split('-');
-            const offeredDate = new Date(parts[0], parts[1] - 1, parts[2]);
-            if (offeredDate > calculatedTargetDate) {
-                isInternalLate = true;
-            }
-        }
-
-        // 1. EPN ACCEPTED
-        if (epnStatus === "accepted") {
-            if (isInternalLate) {
-                statusEl.textContent = "✅ COMPLIANT via EPN (Internal Target Missed)";
-                statusEl.className = "status-warn";
-                actionEl.textContent = "Access met via In-Network Provider. No escalation needed.";
-                warningEl.textContent = "Note: Internal appointment was unavailable/late, but EPN saved compliance.";
-                warningEl.classList.remove("hidden");
-            } else {
-                statusEl.textContent = "✅ COMPLIANT (EPN Accepted)";
-                statusEl.className = "status-pass";
-                actionEl.textContent = "Patient accepted In-Network care. Access standard met.";
-            }
+        // 1. MD appointments follow predetermined rules — no Due-by verdict.
+        if (isMD) {
+            rldGate.classList.add("hidden");
+            statusEl.textContent = "MD APPOINTMENT — Predetermined Scheduling";
+            statusEl.className = "status-info";
+            actionEl.textContent = "MD appointments follow predetermined rules. Due-by access compliance does not apply.";
             return;
         }
 
-        // 2. INTERNAL CHECK
-        if (internalDateProvided) {
-            if (!isInternalLate) {
-                statusEl.textContent = "✅ COMPLIANT (Target Met)";
-                statusEl.className = "status-pass";
-                actionEl.textContent = "Internal appointment offered within timeframe.";
-                return;
-            }
+        // 2. A fully declined EPN offer is compliant on its own.
+        if (epnStatus === "declined") {
+            rldGate.classList.add("hidden");
+            statusEl.textContent = "✅ COMPLIANT (EPN Declined by Member)";
+            statusEl.className = "status-pass";
+            actionEl.textContent = "In-network access was offered and the member declined. Note \"EPN declined\" in the appointment notes. Access requirement met.";
+            return;
+        }
 
-            if (outcomeReason === "patient_declined") {
-                statusEl.textContent = "✅ COMPLIANT (Member Declined)";
-                statusEl.className = "status-pass";
-                actionEl.textContent = "Access met, but member chose later date. Document 'RLD'.";
-                return;
-            }
+        // Gather candidate offered dates: internal + EPN offered date if applicable.
+        const dates = [];
+        if (offeredStr) dates.push(parseDate(offeredStr));
+        if (epnStatus === "offered" && epnDateStr) dates.push(parseDate(epnDateStr));
 
-            // FAIL STATE - SHOW ESCALATION
-            statusEl.textContent = "❌ NON-COMPLIANT (Access Missed)";
-            statusEl.className = "status-fail";
-            escalationEl.classList.remove("hidden"); // Reveal Clinic Selector
-            
-            if (epnStatus === "declined") {
-                actionEl.textContent = "Member declined In-Network option & no internal appt available.";
-            } else {
-                actionEl.textContent = "No appointments available.";
-            }
-        } else {
+        // 3. Nothing to score yet.
+        if (dates.length === 0 || !dueByDate) {
+            rldGate.classList.add("hidden");
             statusEl.textContent = "PENDING INPUT";
             statusEl.className = "status-fail";
-            actionEl.textContent = "Please enter the offered date.";
+            actionEl.textContent = (epnStatus === "offered")
+                ? "Enter the internal and/or EPN offered appointment date."
+                : "Enter the first offered appointment date.";
+            return;
         }
+
+        // Earlier of the available offered dates governs the check.
+        const earliest = new Date(Math.min.apply(null, dates.map(d => d.getTime())));
+        const onTime = earliest <= dueByDate;
+
+        // 4. Met on the booked/offered date — no gate needed.
+        if (onTime) {
+            rldGate.classList.add("hidden");
+            statusEl.textContent = "✅ COMPLIANT (Within Due-by Date)";
+            statusEl.className = "status-pass";
+            actionEl.textContent = "Appointment offered on or before the Due-by Date. Access requirement met — no escalation.";
+            return;
+        }
+
+        // 5. Offered date is LATE → ask the gate before declaring a miss.
+        rldGate.classList.remove("hidden");
+
+        if (rldOffered === "yes") {
+            // A timely slot WAS offered; the later date is the member's choice → compliant.
+            statusEl.textContent = "✅ COMPLIANT (Timely Slot Offered — Member Chose Later)";
+            statusEl.className = "status-pass";
+            actionEl.innerHTML = "A timely appointment was offered and the member chose a later date. In the appointment notes, document <strong>\"EPN declined\"</strong> if the member declined a sooner or EPN appointment, or <strong>\"RLD\"</strong> if the member requested a later date. Access requirement met — no escalation.";
+        } else if (rldOffered === "no") {
+            // No timely slot was available → genuine miss → escalate.
+            statusEl.textContent = "❌ NON-COMPLIANT (Past Due-by Date)";
+            statusEl.className = "status-fail";
+            escalationEl.classList.remove("hidden");
+            actionEl.textContent = (epnStatus === "offered")
+                ? "No internal or EPN appointment available on or before the Due-by Date."
+                : "No appointment available on or before the Due-by Date.";
+        } else {
+            // Gate not answered yet.
+            statusEl.textContent = "⚠️ CHECK REQUIRED";
+            statusEl.className = "status-warn";
+            actionEl.textContent = "The offered date is after the Due-by Date. Answer the question above to determine compliance.";
+        }
+    }
+
+    /* ---------- reset ---------- */
+    function resetForm() {
+        document.getElementById("callType").selectedIndex = 0;
+        calculatedTargetDate = null;
+        document.getElementById("providerType").value = "therapist";
+        document.getElementById("epnStatus").selectedIndex = 0;
+        document.getElementById("rldOffered").selectedIndex = 0;
+        hide("epnDateContainer"); hide("rldGate");
+        handleScenarioChange();
+        document.querySelectorAll("input[type=date]").forEach(i => i.value = "");
+        document.getElementById("resultArea").style.display = "none";
     }
 </script>
 
