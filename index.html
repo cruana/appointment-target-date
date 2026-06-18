@@ -96,7 +96,7 @@
             <ol>
                 <li>Pick the scenario: a new or existing request, a cancellation/no-show, or a crisis.</li>
                 <li>For a request, choose the appointment category. The tool shows the rule and asks only for the dates that category needs.</li>
-                <li>Enter the dates. The tool calculates the <strong>Due-by Date</strong> — the legal access deadline.</li>
+                <li>Enter the dates. The tool calculates the <strong>Due-by Date</strong> — the standard access deadline.</li>
                 <li>Enter the first offered appointment date. The tool checks it against the Due-by Date and tells you whether access is met or escalation is needed.</li>
             </ol>
 
@@ -105,7 +105,7 @@
                 <dt>Target Due Date</dt>
                 <dd>When the request started (referral created, booked at point of service, or the patient's first call), or a date the provider specified. This is the date you enter in HealthConnect. Here it's informational — not the date compliance is judged against.</dd>
                 <dt>Due-by Date</dt>
-                <dd>The legal access deadline (SB855/SB221), calculated from the Target Due Date using the KP Standard window. Compliance is judged against this date.</dd>
+                <dd>The access deadline set by California timely-access standards (<strong>SB855/SB221</strong>), calculated from the Target Due Date using the KP Standard window. Compliance is judged against this date.</dd>
                 <dt>EPN / In-Network</dt>
                 <dd>Outside in-network partners (Rula, Lucet, others). An EPN offer is treated like an internal offer. A declined EPN offer counts as compliant — timely access was offered.</dd>
                 <dt>RLD</dt>
@@ -174,7 +174,7 @@
         <!-- PROVIDER TYPE: MD vs Therapist — affects escalation only, not scoring -->
         <div id="providerTypeBlock" class="hidden">
             <label for="providerType">Provider type for this appointment:</label>
-            <select id="providerType" onchange="if(calculatedTargetDate){checkCompliance();}">
+            <select id="providerType" onchange="handleProviderChange()">
                 <option value="therapist" selected>Therapist</option>
                 <option value="md">MD (Psychiatrist)</option>
             </select>
@@ -227,8 +227,7 @@
             </select>
             <label id="startLabel" for="startDate">Target Due Date (initiation date):</label>
             <input type="date" id="startDate">
-            <div class="helper-text">Target Due Date = when the request started (referral created, booked at point of service, or first patient call) or a date specified by the MD/Therapist. This is the date entered in HealthConnect. The Due-by Date (legal access deadline) is calculated from it. Use the date that matches your selection above.</div>
-            <button onclick="calculateTarget()" class="action-btn">Calculate Due-by Date</button>
+            <div class="helper-text">Target Due Date = when the request started (referral created, booked at point of service, or first patient call) or a date specified by the MD/Therapist. This is the date entered in HealthConnect. The Due-by Date (standard access deadline) is calculated from it. Use the date that matches your selection above.</div>
         </div>
 
         <!-- FOLLOW-UP: stated date wins, else fallbacks -->
@@ -252,7 +251,6 @@
                 <label for="fuLastVisit">Last therapist/MD visit date:</label>
                 <input type="date" id="fuLastVisit">
             </div>
-            <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
         </div>
 
         <!-- ROUTINE RETURN >8wks -->
@@ -275,8 +273,31 @@
                 <label for="rrStartDate">Reference date (request/referral):</label>
                 <input type="date" id="rrStartDate">
             </div>
-            <button onclick="calculateTarget()" class="action-btn">Calculate Target Date</button>
         </div>
+
+        <!-- SHARED ACCESS INPUTS: offered date + EPN (therapist access categories only) -->
+        <div id="accessBlock" class="hidden">
+            <label for="offeredDate">First Offered Appointment Date (Internal):</label>
+            <input type="date" id="offeredDate" onchange="checkCompliance()">
+
+            <div id="epnContainer" class="field-group">
+                <label for="epnStatus">EPN / In-Network Providers:</label>
+                <select id="epnStatus" onchange="handleEpnChange()">
+                    <option value="" disabled selected>-- Select Status --</option>
+                    <option value="not_eligible">EPN Not Eligible</option>
+                    <option value="offered">EPN Offered</option>
+                    <option value="declined">EPN Declined</option>
+                </select>
+                <div class="helper-text">Rula, Lucet, or other In-Network partners. An EPN offer produces an offered date, judged against the Due-by Date like an internal offer. A declined EPN offer is compliant (timely access was offered).</div>
+                <div id="epnDateContainer" class="hidden" style="margin-top:8px;">
+                    <label for="epnOfferedDate">EPN Offered Appointment Date:</label>
+                    <input type="date" id="epnOfferedDate" onchange="checkCompliance()">
+                </div>
+            </div>
+        </div>
+
+        <!-- SHARED CALCULATE BUTTON (access-tracked categories) -->
+        <button id="calcBtn" onclick="calculateTarget()" class="action-btn hidden">Calculate Due-by Date &amp; Check Access</button>
     </div>
 
     <!-- ============ CANCELLATION / RESCHEDULE / NO-SHOW ============ -->
@@ -292,8 +313,9 @@
         </select>
 
         <div id="origTargetBlock" class="hidden">
-            <label for="origTarget">Original target date:</label>
+            <label for="origTarget">Cancelled appointment's target due date:</label>
             <input type="date" id="origTarget">
+            <div class="helper-text">The target due date doesn't change when rescheduling. Enter the target due date from the cancelled appointment, or the earliest date set by the provider/MD.</div>
         </div>
         <div id="callDateBlock" class="hidden">
             <label id="callDateLabel" for="callDate">Date patient calls us (or we call) to reschedule:</label>
@@ -308,31 +330,13 @@
 
     <!-- ============ RESULT ============ -->
     <div id="resultArea" class="result-section">
-        <div><strong>Due-by Date (SB855/SB221 legal access deadline):</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
+        <div><strong>Due-by Date:</strong> <span id="targetDateDisplay" style="font-size: 1.3em;"></span></div>
         <div id="calcMethod" class="helper-text" style="margin-bottom: 5px;"></div>
         <div id="targetInfoLine" class="helper-text" style="margin-bottom: 5px;"></div>
         <div id="resetNote" class="info-note hidden"></div>
 
         <div id="complianceWrap">
             <hr style="border: 0; border-top: 1px solid #cfe2f3; margin: 15px 0;">
-
-            <label>First Offered Appointment Date (Internal):</label>
-            <input type="date" id="offeredDate" onchange="revealCompliance()">
-
-            <div id="epnContainer" class="hidden field-group">
-                <label>EPN / In-Network Providers:</label>
-                <select id="epnStatus" onchange="handleEpnChange()">
-                    <option value="" disabled selected>-- Select Status --</option>
-                    <option value="not_eligible">EPN Not Eligible</option>
-                    <option value="offered">EPN Offered</option>
-                    <option value="declined">EPN Declined</option>
-                </select>
-                <div class="helper-text">Rula, Lucet, or other In-Network partners. An EPN offer produces an offered date, judged against the Due-by Date like an internal offer. A declined EPN offer is compliant (timely access was offered).</div>
-                <div id="epnDateContainer" class="hidden" style="margin-top:8px;">
-                    <label for="epnOfferedDate">EPN Offered Appointment Date:</label>
-                    <input type="date" id="epnOfferedDate" onchange="checkCompliance()">
-                </div>
-            </div>
 
             <!-- RLD GATE: shown only when the offered date falls AFTER the Due-by Date. -->
             <div id="rldGate" class="hidden field-group">
@@ -486,6 +490,34 @@
         else if (t === "intake" || t === "consult") { show("intakeBlock"); }
         else if (t === "followup") { show("followupBlock"); handleFuSource(); }
         else if (t === "routineReturn") { show("returnBlock"); handleRrSource(); }
+
+        // Fresh access inputs for the newly chosen category.
+        document.getElementById("offeredDate").value = "";
+        document.getElementById("epnStatus").selectedIndex = 0;
+        document.getElementById("epnOfferedDate").value = "";
+        document.getElementById("rldOffered").selectedIndex = 0;
+        hide("epnDateContainer"); hide("rldGate"); hide("escalationWarning");
+        updateAccessUI();
+    }
+
+    /* Show the offered-date + EPN fields and the calculate button only where they apply.
+       Access fields: therapist-scored categories only (hidden for MD — no access verdict).
+       Calculate button: every access-tracked category (so MD appts still get a Due-by Date). */
+    function updateAccessUI() {
+        const t = document.getElementById("apptType").value;
+        const isAccessCat = (t === "intake" || t === "consult" || t === "followup" || t === "routineReturn");
+        const isMD = document.getElementById("providerType").value === "md";
+        document.getElementById("calcBtn").classList.toggle("hidden", !isAccessCat);
+        document.getElementById("accessBlock").classList.toggle("hidden", !(isAccessCat && !isMD));
+    }
+
+    /* Provider type changed (follow-up / routine return). Re-evaluate which fields show,
+       and if a result is already on screen, recompute it under the new provider type. */
+    function handleProviderChange() {
+        updateAccessUI();
+        if (document.getElementById("resultArea").style.display === "block") {
+            calculateTarget();
+        }
     }
 
     /* ---------- urgent ---------- */
@@ -652,16 +684,16 @@
         // Compliance section only applies to access-tracked categories.
         document.getElementById("complianceWrap").style.display = res.compliance ? "block" : "none";
 
-        // Soft reset of compliance inputs.
-        document.getElementById("offeredDate").value = "";
-        document.getElementById("epnStatus").selectedIndex = 0;
-        document.getElementById("epnOfferedDate").value = "";
-        document.getElementById("rldOffered").selectedIndex = 0;
-        hide("epnContainer"); hide("epnDateContainer"); hide("escalationWarning"); hide("rldGate");
-        document.getElementById("finalStatus").textContent = res.compliance ? "PENDING INPUT" : "INFORMATIONAL — NO ACCESS CHECK";
-        document.getElementById("finalStatus").className = res.compliance ? "status-fail" : "status-info";
-        document.getElementById("actionItem").textContent = "";
-        if (res.compliance) checkCompliance();
+        // Render the verdict from the offered/EPN fields already entered above — do NOT clear them.
+        hide("escalationWarning");
+        if (res.compliance) {
+            checkCompliance();
+        } else {
+            hide("rldGate");
+            document.getElementById("finalStatus").textContent = "INFORMATIONAL — NO ACCESS CHECK";
+            document.getElementById("finalStatus").className = "status-info";
+            document.getElementById("actionItem").textContent = "";
+        }
     }
 
     function handleEpnChange() {
@@ -669,17 +701,6 @@
         const v = document.getElementById("epnStatus").value;
         if (v === "offered") { show("epnDateContainer"); }
         else { hide("epnDateContainer"); document.getElementById("epnOfferedDate").value = ""; }
-        checkCompliance();
-    }
-
-    function revealCompliance() {
-        // EPN / In-Network is therapist-only (not offered for MD appointments).
-        if (document.getElementById("providerType").value === "md") {
-            hide("epnContainer");
-            document.getElementById("epnStatus").selectedIndex = 0;
-        } else {
-            show("epnContainer");
-        }
         checkCompliance();
     }
 
@@ -792,6 +813,15 @@
         document.querySelectorAll("input[type=date]").forEach(i => i.value = "");
         document.getElementById("resultArea").style.display = "none";
     }
+
+    /* ---------- date fields: open the picker on a click anywhere in the field ---------- */
+    document.querySelectorAll('input[type="date"]').forEach(function (el) {
+        el.addEventListener('click', function () {
+            if (typeof this.showPicker === 'function') {
+                try { this.showPicker(); } catch (e) { /* already open or not permitted — icon still works */ }
+            }
+        });
+    });
 </script>
 
 </body>
